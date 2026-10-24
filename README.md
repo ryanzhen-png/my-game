@@ -1,2 +1,2 @@
 # my-game
-added a readme
+added a readyou!
