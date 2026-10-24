@@ -24,7 +24,7 @@ Open ../page1.html in a browser. No installation, server, libraries, or build st
 
 JSON is readable structured text, not a binary format. A binary decoder would read bytes into the same kind of game objects; binary is not necessary here. The page editor builds a level in memory; it does not save edits to disk. Copy edited JSON somewhere to keep it.
 
-There is no skeletal animation system, map-editor dependency, networking, or general physics engine. The player switches between six image poses, collisions are rectangles, and player movement builds momentum and slows gradually when you release a direction. The custom collision code is intended for this small static-block example, not arbitrary high-speed bodies, moving platforms, or slopes.
+There is no skeletal animation system, map-editor dependency, networking, or general physics engine. The player switches between six image poses, collisions are rectangles, and movement starts, stops, and reverses immediately with your input. The custom collision code is intended for this small static-block example, not arbitrary high-speed bodies, moving platforms, or slopes.
 
 A real project could replace the text editor with Tiled, the small decoder with a Tiled loader, and the basic movement code with a game engine. The separation between data, art, behavior, and physics would stay useful.
 
@@ -70,6 +70,8 @@ The player starts with 3 health, and all slimes and bees start with 2 health. Ea
 
 Stomps pop the player vertically upward while preserving horizontal speed and normal air steering. Taking damage knocks the player up and away from the enemy, shot, or spike for 0.28 seconds. Movement input resumes after that recoil; terrain collisions still apply. Invulnerable contacts do not trigger another knockback.
 
-## Player momentum
+## Player movement
 
-Hold left or right to accelerate from rest to a 320-pixel/second sprint in about 0.76 seconds on the ground. Releasing slows the player with ground friction; reversing brakes before accelerating the other way. In the air, weaker steering and friction preserve momentum. Walls stop horizontal momentum, and stomps preserve horizontal momentum while damage applies knockback. Tune sprintSpeed, acceleration, braking, groundFriction, airAcceleration, and airFriction in physics.js; enemy patrol speeds stay independent.
+Left and right immediately set movement to 240 pixels per second, on the ground and in the air. Releasing stops horizontal movement immediately, and reversing changes direction immediately. Stomps add vertical bounce without a sideways impulse. Damage still applies brief knockback. Tune speed in physics.js to change player movement speed; enemy patrol speeds stay independent.
+
+Surviving enemies recoil for 0.3 seconds after a stomp. Slimes are pushed sideways with a small hop; bees are pushed sideways and downward, interrupting their attack. Recoil collides with terrain, and a bee knocked into the ground is stunned for one second.

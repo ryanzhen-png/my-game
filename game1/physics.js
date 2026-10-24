@@ -2,12 +2,7 @@ window.Physics = {
   gravity: 1500,       // pixels per second squared
   speed: 240,          // pixels per second
   jumpSpeed: 560,
-  sprintSpeed: 320,
-  acceleration: 420,
-  braking: 1000,
-  groundFriction: 800,
-  airAcceleration: 280,
-  airFriction: 100,
+
 
   overlaps(a, b) {
     return a.x < b.x + b.w && a.x + a.w > b.x &&

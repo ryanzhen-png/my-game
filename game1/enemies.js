@@ -10,6 +10,15 @@ window.Enemies = {
       direction: -1, startX: spawn.x, speed: 65, health: 2, maxHealth: 2 };
   },
 
+  knockback(enemy, player) {
+    const offset = enemy.x + enemy.w / 2 - (player.x + player.w / 2);
+    const away = Math.sign(offset) || Math.sign(player.vx) || -enemy.direction;
+    enemy.state = "knockback"; enemy.timer = 0.3;
+    enemy.vx = away * 180;
+    enemy.vy = enemy.kind === "flying" ? 180 : -180;
+    enemy.grounded = false;
+  },
+
   stomp(player, previousPlayer, enemy, previousEnemy) {
     return player.vy > 0 && previousPlayer.y + player.h <= previousEnemy.y + 2 &&
       player.y + player.h >= enemy.y && player.y < enemy.y + enemy.h &&
@@ -124,6 +133,34 @@ window.Enemies = {
 
   update(enemies, level, dt, player, projectiles = []) {
     for (const enemy of enemies) {
+      if (enemy.state === "knockback") {
+        // Recoil temporarily overrides patrol and interrupts any attack wind-up.
+        if (enemy.kind === "flying") {
+          const hit = this.moveFlying(enemy, level, enemy.vx * dt, enemy.vy * dt);
+          if (hit.ground) continue; // Ground impacts still cause a full one-second stun.
+          if (hit.wall) enemy.vx = 0;
+          if (hit.ceiling) enemy.vy = 0;
+        } else {
+          const oldX = enemy.x, velocity = enemy.vx;
+          Physics.step(enemy, level.blocks, Math.sign(velocity), false, dt,
+            level.width, level.slopes, Math.abs(velocity));
+          if (Math.abs(enemy.x - oldX - velocity * dt) > 0.0001) enemy.vx = 0;
+          if (enemy.y > level.height) {
+            enemy.x = enemy.startX; enemy.y = 0; enemy.vy = 0;
+          }
+        }
+        enemy.vx *= Math.max(0, 1 - 5 * dt);
+        enemy.timer -= dt;
+        if (enemy.timer <= 0) {
+          enemy.startX = enemy.x;
+          if (enemy.kind === "flying") {
+            enemy.state = "recover"; enemy.timer = 0.2;
+          } else {
+            enemy.state = "patrol";
+          }
+        }
+        continue;
+      }
       if (enemy.kind === "flying") {
         const dx = player ? player.x + player.w / 2 - (enemy.x + enemy.w / 2) : Infinity;
         const dy = player ? player.y + player.h / 2 - (enemy.y + enemy.h / 2) : Infinity;

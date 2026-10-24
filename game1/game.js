@@ -71,23 +71,11 @@ function knockbackPlayer(source, stomp = false) {
 
 function stepPlayer(direction, jump, dt) {
   const recoiling = player.knockbackTime > 0;
-  let velocity = player.vx;
-  if (recoiling) {
-    velocity = player.knockbackVX;
-  } else {
-    const target = direction * Physics.sprintSpeed;
-    const reversing = direction && velocity * direction < 0;
-    const rate = !direction
-      ? (player.grounded ? Physics.groundFriction : Physics.airFriction)
-      : reversing ? Physics.braking
-      : player.grounded ? Physics.acceleration : Physics.airAcceleration;
-    // Approach the requested speed gradually, without overshooting it.
-    velocity += Math.sign(target - velocity) * Math.min(Math.abs(target - velocity), rate * dt);
-  }
+  const velocity = recoiling ? player.knockbackVX : direction * Physics.speed;
   const oldX = player.x;
   Physics.step(player, level.blocks, Math.sign(velocity), !recoiling && jump,
     dt, level.width, level.slopes, Math.abs(velocity));
-  // Hitting a wall removes momentum, so holding into it cannot build sprint speed.
+  // Stop horizontal movement at walls, including during knockback.
   if (Math.abs(player.x - oldX - velocity * dt) > 0.0001) {
     player.vx = 0;
     if (recoiling) player.knockbackVX = 0;
@@ -199,6 +187,7 @@ function frame(time) {
         player.y = target.y - player.h;
         knockbackPlayer(target, true);
         if (target.health <= 0) enemies.splice(stompedIndex, 1);
+        else Enemies.knockback(target, player);
       }
       const enemyHit = stompedIndex < 0 && enemies.find(enemy => Physics.overlaps(player, enemy));
       const shotHit = projectiles.find(shot => Physics.overlaps(player, shot));
