@@ -1,15 +1,67 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Page 1</title>
-  <style>
-    body { margin: 0; min-height: 100vh; display: grid; place-items: center; font-family: system-ui, sans-serif; }
-    h1 { margin: 0; font-size: clamp(64px, 12vw, 144px); font-weight: 700; }
-  </style>
+  <title>Game 1 — How a platformer works</title>
+  <link rel="stylesheet" href="game1/style.css">
 </head>
 <body>
-  <h1>Page 1</h1>
+  <main>
+    <a href="index.html">← Start menu</a>
+    <h1>How a platformer works</h1>
+    <p>Map data → decoder → objects → physics → drawing</p>
+    <p>Move: <strong>← → or A / D</strong> · Jump: <strong>Space / ↑ / W</strong> · Restart: <strong>R</strong></p>
+    <div class="controls">
+      <label for="level-select">Level:</label>
+      <select id="level-select"></select>
+      <button id="next-level" disabled>Next level ?</button>
+    </div>
+    <canvas id="game" width="800" height="480" tabindex="0" aria-label="Platform game. Focus here, then use arrow keys to move and Space to jump. Reach the yellow flag.">Your browser needs canvas support to run this demo.</canvas>
+    <div class="controls" aria-label="Game controls">
+      <button data-key="ArrowLeft" aria-label="Move left">← Left</button>
+      <button data-key="ArrowRight" aria-label="Move right">Right →</button>
+      <button data-key="Space">Jump ↑</button>
+      <button id="restart">Restart</button>
+    </div>
+    <p id="status" role="status">Loading artwork…</p>
+    <label><input id="background-motion" type="checkbox" checked> Animate background</label>
+    <label><input id="debug" type="checkbox" checked> Show collision boxes</label>
+    <p id="camera-info"></p>
+    <section>
+      <h2>1. Edit the map</h2>
+      <p>Each character becomes one 40 × 40 pixel cell. <code>#</code> = block, <code>P</code> = player, <code>^</code> = spikes, <code>F</code> = finish, <code>/</code> = uphill ramp, <code>\</code> = downhill ramp, <code>E</code> = enemy, <code>.</code> = empty.</p>
+      <p>Change a row, then build the level. Use 12 rows of equal length (20?200 characters). Wider maps scroll as you move. The decoder checks the data before creating the objects.</p>
+      <label for="map">Level file contents (JSON)</label>
+      <textarea id="map" spellcheck="false" rows="17"></textarea>
+      <div class="controls"><button id="build">Build edited map</button><button id="reset-map">Restore selected level</button></div>
+      <p id="map-message" role="status"></p>
+    </section>
+    <section>
+      <h2>2. Follow the files</h2>
+      <ul>
+        <li><code>game1/map.js</code> — three levels saved as JSON text.</li>
+        <li><code>game1/decoder.js</code> — parses the text and turns cells into positioned objects.</li>
+        <li><code>game1/assets/</code> — SVG images, separate from the map.</li>
+        <li><code>game1/enemies.js</code> ? patrol behavior, wall turns, and ledge checks.</li>
+        <li><code>game1/physics.js</code> — gravity, movement, solid collisions, and ramp surface heights.</li>
+        <li><code>game1/game.js</code> — controls, hazards, goal, and drawing each frame.</li>
+      </ul>
+      <p>The green image makes a block look solid. Its collision rectangle makes it act solid. Turn off collision boxes to see the difference.</p>
+      <h2>3. Watch the world scroll</h2>
+      <p>Positions in the map stay fixed. The camera subtracts its position when drawing: <code>screenX = worldX ? cameraX</code>. Distant hills move at a fraction of the camera speed, creating depth.</p>
+      <p>The character changes images to walk, jump, fall, and celebrate. Its collision rectangle stays the same.</p>
+      <p>Character art: <a href="https://kenney.nl/assets/platformer-characters">Platformer Characters by Kenney</a>, CC0. Images are included locally, so gameplay needs no internet connection.</p>
+      <h2>4. Ramps and a moving enemy</h2>
+      <p>Walk across the small hill near the start. A ramp calculates a surface height beneath your feet instead of using a flat rectangle. Ramps are one-way: you can jump through their underside.</p>
+      <p>The red enemy patrols near its spawn, turns at walls and ledges, and sends you back on contact. Jump over it; this demo has no combat. Try moving <code>E</code> in the map.</p>
+    </section>
+  </main>
+  <script src="game1/map.js"></script>
+  <script src="game1/decoder.js"></script>
+  <script src="game1/physics.js"></script>
+  <script src="game1/scenery.js"></script>
+  <script src="game1/enemies.js"></script>
+  <script src="game1/game.js"></script>
 </body>
 </html>
