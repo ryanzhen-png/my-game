@@ -10,12 +10,22 @@ window.Enemies = {
       direction: -1, startX: spawn.x, speed: 65, health: 2, maxHealth: 2 };
   },
 
-  knockback(enemy, player) {
+  knockback(enemy, player, angle, heavy = false) {
     const offset = enemy.x + enemy.w / 2 - (player.x + player.w / 2);
     const away = Math.sign(offset) || Math.sign(player.vx) || -enemy.direction;
-    enemy.state = "knockback"; enemy.timer = 0.3;
-    enemy.vx = away * 180;
-    enemy.vy = enemy.kind === "flying" ? 180 : -180;
+    const swordHit = Number.isFinite(angle);
+    const strength = heavy ? 440 : 300;
+    enemy.state = "knockback";
+    enemy.timer = swordHit ? (heavy ? 0.4 : 0.3) : 0.3;
+    if (swordHit) {
+      // Sword aim determines the push, including upward and diagonal hits.
+      enemy.vx = Math.cos(angle) * strength;
+      enemy.vy = Math.sin(angle) * strength;
+      if (enemy.kind !== "flying") enemy.vy -= 140;
+    } else {
+      enemy.vx = away * 180;
+      enemy.vy = enemy.kind === "flying" ? 180 : -180;
+    }
     enemy.grounded = false;
   },
 

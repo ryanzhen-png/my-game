@@ -117,6 +117,14 @@ function buildMap() {
   }
 }
 
+function requestAttackOrNextLevel() {
+  if (won) {
+    if (!nextButton.disabled) selectLevel(selectedLevel + 1);
+    return;
+  }
+  attackRequested = true;
+}
+
 const jumpKeys = ["ArrowUp"];
 const aimKeys = { KeyD: 0, KeyS: Math.PI / 2, KeyA: Math.PI, KeyW: -Math.PI / 2 };
 function updateAttackAim() {
@@ -133,7 +141,7 @@ window.addEventListener("keydown", event => {
   event.preventDefault();
   if (jumpKeys.includes(event.code) && !event.repeat) jumpRequested = true;
   if (event.code in aimKeys) attackAim = aimKeys[event.code];
-  if (event.code === "Space" && !event.repeat) attackRequested = true;
+  if (event.code === "Space" && !event.repeat) requestAttackOrNextLevel();
   if (["ShiftLeft", "ShiftRight"].includes(event.code) && !event.repeat) heavyAttack.checked = !heavyAttack.checked;
   if (event.code === "KeyR" && level) restart();
   keys.add(event.code);
@@ -173,7 +181,7 @@ document.querySelectorAll("[data-key]").forEach(button => {
     keys.add(key);
     if (key in aimKeys) updateAttackAim();
     if (key === "ArrowUp") jumpRequested = true;
-    if (key === "Space") attackRequested = true;
+    if (key === "Space") requestAttackOrNextLevel();
   });
   for (const name of ["pointerup", "pointercancel", "lostpointercapture"]) {
     button.addEventListener(name, () => { keys.delete(key); updateAttackAim(); });
@@ -181,7 +189,7 @@ document.querySelectorAll("[data-key]").forEach(button => {
   button.addEventListener("click", event => {
     if (event.detail === 0) {
       if (key === "ArrowUp") jumpRequested = true;
-      else if (key === "Space") attackRequested = true;
+      else if (key === "Space") requestAttackOrNextLevel();
       else if (key in aimKeys) attackAim = aimKeys[key];
       else {
         keys.add(key);
@@ -255,7 +263,7 @@ function frame(time) {
         nextButton.disabled = selectedLevel === window.demoLevels.length - 1;
         statusText.textContent = nextButton.disabled
           ? "All three levels complete! Choose a level or edit a map to keep experimenting."
-          : "Flag reached! Choose Next level to continue, or press R to replay.";
+          : "Flag reached! Press Space or choose Next level to continue. Press R to replay.";
       }
     }
     remaining -= dt;
@@ -380,9 +388,9 @@ function frame(time) {
     ctx.translate(player.x + player.w / 2, player.y + player.h / 2);
     ctx.rotate(player.attackAngle);
     ctx.strokeStyle = player.attackHeavy ? "#ffd066bb" : "#e6f7ff99"; ctx.lineWidth = 5;
-    ctx.beginPath(); ctx.arc(0, 0, 48, -1.05, -1.05 + progress * 2.1); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, 0, 34, -1.05, -1.05 + progress * 2.1); ctx.stroke();
     ctx.rotate(-1.05 + progress * 2.1);
-    ctx.drawImage(art.sword, 4, -8, 56, 17.5);
+    ctx.drawImage(art.sword, 4, -6, 38, 12);
     ctx.restore();
     if (document.querySelector("#debug").checked) {
       const box = Combat.hitbox(player);
@@ -394,6 +402,17 @@ function frame(time) {
     ctx.strokeRect(player.x, player.y, player.w, player.h);
   }
   ctx.restore();
+  if (won) {
+    ctx.save();
+    ctx.fillStyle = "#101522dd";
+    ctx.fillRect(0, 16, canvas.width, 66);
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 22px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(nextButton.disabled ? "All levels complete! Press R to replay."
+      : "Flag reached! Press Space for the next level.", canvas.width / 2, 57);
+    ctx.restore();
+  }
   document.querySelector("#health").textContent = `Health: ${player.health} / ${player.maxHealth}`;
   document.querySelector("#camera-info").textContent =
     `World: ${level.width}px | Camera: ${Math.round(cameraX)}px | Player world X: ${Math.round(player.x)}px`;
