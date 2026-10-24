@@ -11,6 +11,7 @@ function makeWideMap(name, columns, platforms, spikes, finish) {
   // A small hill has a ramp on each side and a flat top.
   for (const [offset, symbol] of ["/", "#", "#", "\\"].entries()) rows[10][3 + offset] = symbol;
   rows[10][columns - 10] = "E";
+  rows[8][columns - 17] = "B";
   rows[finish[1]][finish[0]] = "F";
   return { name, tileSize: 40, rows: rows.map(row => row.join("")) };
 }
@@ -24,7 +25,7 @@ window.demoLevels = [
       "....................",
       "....................",
       "....................",
-      "....................",
+      ".................B..",
       "..............F.....",
       "............####....",
       ".......###..........",

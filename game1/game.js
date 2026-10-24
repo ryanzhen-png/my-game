@@ -46,7 +46,7 @@ function restart() {
   facing = 1;
   nextButton.disabled = true;
   jumpRequested = false;
-  statusText.textContent = "Reach the yellow flag. Avoid red spikes and patrolling enemies. Ramps can be walked up or down.";
+  statusText.textContent = "Reach the yellow flag. Avoid spikes, walking slimes, and flying bees. Ramps can be walked up or down.";
 }
 
 function buildMap() {
@@ -164,9 +164,23 @@ function frame(time) {
     }
     ctx.restore();
   }
-  for (const enemy of enemies) drawObject(art.enemy, enemy);
+  for (const enemy of enemies) {
+    const frameName = (enemy.kind === "flying" ? "bee" : "slime") +
+      (Math.floor(animationTime * (enemy.kind === "flying" ? 12 : 6)) % 2 ? "B" : "A");
+    // Flip the artwork with patrol direction; collision stays in world space.
+    ctx.save();
+    ctx.translate(enemy.x + enemy.w / 2, enemy.y);
+    ctx.scale(enemy.direction < 0 ? 1 : -1, 1);
+    ctx.drawImage(art[frameName], -enemy.w / 2, 0, enemy.w, enemy.h);
+    ctx.restore();
+    if (document.querySelector("#debug").checked) {
+      ctx.strokeStyle = "#df2476";
+      ctx.strokeRect(enemy.x, enemy.y, enemy.w, enemy.h);
+    }
+  }
   for (const spike of level.spikes) drawObject(art.spikes, spike);
-  drawObject(art.flag, level.goal);
+  // The goal's collision rectangle stays fixed as its flag flutters.
+  drawObject(art[Math.floor(animationTime * 6) % 2 ? "flagB" : "flagA"], level.goal);
 
   // Animation chooses an image; it does not change the collision rectangle.
   const pose = won ? "cheer1" : !player.grounded ? (player.vy < 0 ? "jump" : "fall")
@@ -190,7 +204,11 @@ function frame(time) {
 }
 
 const imageFiles = {
-  ramp: "ramp.svg", enemy: "enemy.svg", block: "block.svg", spikes: "spikes.svg", flag: "flag.svg",
+  ramp: "ramp.svg", block: "block.svg", spikes: "spikes.svg",
+  slimeA: "kenney-platformer/slime_normal_walk_a.png",
+  slimeB: "kenney-platformer/slime_normal_walk_b.png",
+  beeA: "kenney-platformer/bee_a.png", beeB: "kenney-platformer/bee_b.png",
+  flagA: "kenney-platformer/flag_yellow_a.png", flagB: "kenney-platformer/flag_yellow_b.png",
   ...Object.fromEntries(["idle", "walk1", "walk2", "jump", "fall", "cheer1"].map(pose =>
     [pose, "kenney/adventurer_" + pose + ".png"]))
 };

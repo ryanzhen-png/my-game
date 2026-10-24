@@ -1,12 +1,28 @@
-﻿// An enemy is a moving body plus a tiny rule: patrol and turn around.
+// An enemy is a moving body plus a tiny rule: patrol and turn around.
 window.Enemies = {
   create(spawn) {
-    return { ...spawn, w: 28, h: 30, vx: 0, vy: 0, grounded: false,
+    if (spawn.kind === "flying") {
+      return { ...spawn, w: 36, h: 30, direction: -1, startX: spawn.x,
+        startY: spawn.y, age: 0, speed: 80 };
+    }
+    return { kind: "ground", ...spawn, w: 28, h: 30, vx: 0, vy: 0, grounded: false,
       direction: -1, startX: spawn.x, speed: 65 };
   },
 
   update(enemies, level, dt) {
     for (const enemy of enemies) {
+      if (enemy.kind === "flying") {
+        // A kinematic enemy: choose its path directly, with no gravity.
+        enemy.age += dt;
+        const left = Math.max(0, enemy.startX - 80);
+        const right = Math.min(level.width - enemy.w, enemy.startX + 80);
+        enemy.x = Math.max(left, Math.min(right, enemy.x + enemy.direction * enemy.speed * dt));
+        if (enemy.x <= left) enemy.direction = 1;
+        if (enemy.x >= right) enemy.direction = -1;
+        enemy.y = Math.max(0, Math.min(level.height - enemy.h,
+          enemy.startY + Math.sin(enemy.age * 3) * 16));
+        continue;
+      }
       const oldX = enemy.x;
       const feet = enemy.y + enemy.h;
       const ahead = enemy.direction > 0 ? enemy.x + enemy.w + 3 : enemy.x - 3;

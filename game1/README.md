@@ -41,10 +41,19 @@ Try standing still and observing the clouds, then walking through Meadow trail w
 
 ## Ramps and enemies
 
-New map symbols: / rises to the right, \ descends to the right, and E spawns a red enemy. Both ramp types appear in the hill near each level's start. The enemy uses a local SVG so its behavior is easy to change independently from its art.
+New map symbols: / rises to the right, \ descends to the right, and E spawns a slime enemy. Both ramp types appear in the hill near each level's start. The enemy uses a local SVG so its behavior is easy to change independently from its art.
 
 physics.js calculates the highest ramp surface beneath the character's feet. Grounded characters follow descending ramps with a small per-step snap distance. Ramps are one-way walking surfaces: upward jumps pass through the underside. This is an intentional teaching simplification, not a complete solid-triangle collision system.
 
-enemies.js creates patrol bodies and moves them using the same gravity and collision code, at a slower speed. Enemies reverse near their patrol boundary (60 pixels either side of spawn), walls, and ledges. Contact restarts the level and resets enemies. Enemies do not chase, jump, or fight; jump over them or take a higher route.
+enemies.js creates patrol bodies and moves them using the same gravity and collision code, at a slower speed. Enemies reverse near their patrol boundary (60 pixels either side of spawn), walls, and ledges. Contact restarts the level and resets enemies. Ground enemies do not chase, jump, or fight; jump over them or take a higher route.
 
 Experiments: change enemy.speed from 65, change the patrol range from 60, move E onto a platform, or replace a pair of blocks with / and \ and compare the collision outline.
+
+
+## Sprite animation and a flying enemy
+
+E spawns a ground slime; B spawns a flying bee. Both reset the player on contact and reset to their starting positions on restart. The bee is kinematic: enemies.js chooses its horizontal patrol position and a sine-wave bob directly, without gravity or terrain collisions. Its path is clamped to the world boundaries. Put B in open air when editing a level.
+
+Each enemy uses two downloaded PNG frames from Kenney's New Platformer Pack. game.js swaps slime frames at 6 frames/second and bee wing frames at 12 frames/second; it mirrors the image when patrol direction changes. The goal swaps two yellow-flag frames at 6 frames/second, including after winning. The collision rectangles do not animate; transparent sprite margins are included in these simple rectangular hitboxes.
+
+Assets are in assets/kenney-platformer/ with their original filenames and license. Change the animation rates in game.js or the bee's speed, 80-pixel patrol radius, and 16-pixel bob in enemies.js. No external requests occur while playing.
