@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Game 1 — How a platformer works</title>
+  <link rel="stylesheet" href="game1/style.css">
+</head>
+<body>
+  <main>
+    <a href="index.html">← Start menu</a>
+    <h1>How a platformer works</h1>
+    <p>Map data → decoder → objects → physics → drawing</p>
+    <p>Move: <strong>Left / Right arrows</strong> ? Jump: <strong>Up arrow</strong> ? Aim sword: <strong>W A S D (combine for diagonals)</strong> ? Attack: <strong>Space</strong> ? Toggle heavy: <strong>Shift</strong> ? Restart: <strong>R</strong></p>
+    <div class="controls">
+      <label for="level-select">Level:</label>
+      <select id="level-select"></select>
+      <button id="next-level" disabled>Next level ?</button>
+    </div>
+    <div id="game-screen">
+    <canvas id="game" width="800" height="480" tabindex="0" aria-label="Platform game. Focus here, then use Left and Right to move, Up to jump, WASD to aim, and Space to attack. Reach the yellow flag.">Your browser needs canvas support to run this demo.</canvas>
+    <div class="controls" aria-label="Game controls">
+      <button data-key="ArrowLeft" aria-label="Move left">← Left</button>
+      <button data-key="ArrowRight" aria-label="Move right">Right →</button>
+      <button data-key="ArrowUp">Jump ↑</button>
+      <button data-key="Space" aria-label="Swing sword">Attack (Space)</button>
+      <button data-key="KeyW" aria-label="Aim sword up">Aim up</button>
+      <button data-key="KeyA" aria-label="Aim sword left">Aim left</button>
+      <button data-key="KeyS" aria-label="Aim sword down">Aim down</button>
+      <button data-key="KeyD" aria-label="Aim sword right">Aim right</button>
+      <button id="restart">Restart</button>
+      <button id="fullscreen" aria-pressed="false" hidden>Fullscreen</button>
+    </div>
+    </div>
+    <p id="health" role="status" aria-label="Player health">Health: 3 / 3</p>
+    <p id="status" role="status">Loading artwork…</p>
+    <label><input id="heavy-attack" type="checkbox"> Heavy attack (Shift)</label>
+    <label><input id="double-jump" type="checkbox" checked> Enable double jump</label>
+    <label><input id="background-motion" type="checkbox" checked> Animate background</label>
+    <label><input id="debug" type="checkbox" checked> Show collision boxes and bug vision</label>
+    <p id="camera-info"></p>
+    <section>
+      <h2>1. Edit the map</h2>
+      <p>Each character becomes one 40 × 40 pixel cell. <code>#</code> = block, <code>P</code> = player, <code>^</code> = spikes, <code>F</code> = finish, <code>/</code> = uphill ramp, <code>\</code> = downhill ramp, <code>E</code> = walking slime, <code>B</code> = type A shooting bee, <code>C</code> = type B charging bee, <code>.</code> = empty.</p>
+      <p>Change a row, then build the level. Use 12 rows of equal length (20?200 characters). Wider maps scroll as you move. The decoder checks the data before creating the objects.</p>
+      <label for="map">Level file contents (JSON)</label>
+      <textarea id="map" spellcheck="false" rows="17"></textarea>
+      <div class="controls"><button id="build">Build edited map</button><button id="reset-map">Restore selected level</button></div>
+      <p id="map-message" role="status"></p>
+    </section>
+    <section>
+      <h2>2. Follow the files</h2>
+      <ul>
+        <li><code>game1/map.js</code> — three levels saved as JSON text.</li>
+        <li><code>game1/decoder.js</code> — parses the text and turns cells into positioned objects.</li>
+        <li><code>game1/assets/</code> — SVG images, separate from the map.</li>
+        <li><code>game1/enemies.js</code> ? patrol behavior, wall turns, and ledge checks.</li>
+        <li><code>game1/physics.js</code> — gravity, movement, solid collisions, and ramp surface heights.</li>
+        <li><code>game1/game.js</code> — controls, hazards, goal, and drawing each frame.</li>
+      </ul>
+      <p>The green image makes a block look solid. Its collision rectangle makes it act solid. Turn off collision boxes to see the difference.</p>
+      <h2>3. Watch the world scroll</h2>
+      <p>Positions in the map stay fixed. The camera subtracts its position when drawing: <code>screenX = worldX ? cameraX</code>. Distant hills move at a fraction of the camera speed, creating depth.</p>
+      <p>The character changes images to walk, jump, fall, and celebrate. Its collision rectangle stays the same.</p>
+      <p>Character art: <a href="https://kenney.nl/assets/platformer-characters">Platformer Characters by Kenney</a>, CC0. Images are included locally, so gameplay needs no internet connection.</p>
+      <h2>4. Ramps and a moving enemy</h2>
+      <p>Walk across the small hill near the start. A ramp calculates a surface height beneath your feet instead of using a flat rectangle. Ramps are one-way: you can jump through their underside.</p>
+      <p>Land on enemies from above to defeat them and bounce. Side or underside contact, spikes, and projectiles reset the level. Bees detect the player inside their visible 200-pixel vision circles. Type A (<code>B</code>, gold) fires aimed shots; type B (<code>C</code>, pink) flashes before charging toward your last position, then pauses to recover. Try both in the map editor.</p>
+      <p>Slime walking, bee wingbeats, and flag flutter each alternate between two PNG frames. The artwork comes from <a href="https://kenney.nl/assets/new-platformer-pack">Kenney?s New Platformer Pack</a> (CC0), included locally with its license. Animation changes the image, while the collision rectangles stay fixed.</p>
+    </section>
+  </main>
+  <script src="game1/map.js"></script>
+  <script src="game1/decoder.js"></script>
+  <script src="game1/physics.js"></script>
+  <script src="game1/scenery.js"></script>
+  <script src="game1/enemies.js"></script>
+  <script src="game1/combat.js"></script>
+  <script src="game1/game.js"></script>
+</body>
+</html>
