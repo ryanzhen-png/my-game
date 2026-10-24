@@ -45,14 +45,14 @@ New map symbols: / rises to the right, \ descends to the right, and E spawns a s
 
 physics.js calculates the highest ramp surface beneath the character's feet. Grounded characters follow descending ramps with a small per-step snap distance. Ramps are one-way walking surfaces: upward jumps pass through the underside. This is an intentional teaching simplification, not a complete solid-triangle collision system.
 
-enemies.js creates patrol bodies and moves them using the same gravity and collision code, at a slower speed. Enemies reverse near their patrol boundary (60 pixels either side of spawn), walls, and ledges. Side and underside contact restart the level. Landing from above defeats an enemy and bounces the player.
+enemies.js creates patrol bodies and moves them using the same gravity and collision code, at a slower speed. Enemies reverse near their patrol boundary (60 pixels either side of spawn), walls, and ledges. Side and underside contact damage the player. Landing from above deals one damage to one enemy and bounces the player.
 
 Experiments: change enemy.speed from 65, change the patrol range from 60, move E onto a platform, or replace a pair of blocks with / and \ and compare the collision outline.
 
 
 ## Sprite animation and a flying enemy
 
-E spawns a ground slime; B spawns a type A shooting bee; C spawns a type B charging bee. All reset on restart. Stomp enemies from above to defeat them; other contact resets the player. The bee is kinematic: enemies.js chooses its horizontal patrol position and a sine-wave bob directly, without gravity or terrain collisions. Its path is clamped to the world boundaries. Put B in open air when editing a level.
+E spawns a ground slime; B spawns a type A shooting bee; C spawns a type B charging bee. All reset on restart. Stomp enemies twice from above to defeat them; other contact damages the player. The bee is kinematic: enemies.js chooses its horizontal patrol position and a sine-wave bob directly, without gravity or terrain collisions. Its path is clamped to the world boundaries. Put B in open air when editing a level.
 
 Each enemy uses two downloaded PNG frames from Kenney's New Platformer Pack. game.js swaps slime frames at 6 frames/second and bee wing frames at 12 frames/second; it mirrors the image when patrol direction changes. The goal swaps two yellow-flag frames at 6 frames/second, including after winning. The collision rectangles do not animate; transparent sprite margins are included in these simple rectangular hitboxes.
 
@@ -63,3 +63,7 @@ Assets are in assets/kenney-platformer/ with their original filenames and licens
 Both variants have a vision radius of 200 pixels from their center to the player center. Show collision boxes and bug vision toggles their visible vision areas; blocks and solid ramp triangles clip those areas and block detection. Type A (gold, labeled A) charges up for 0.6 seconds, then aims at the player's current position when shooting, with a 1.4-second cooldown while in range. Shots expire after 3 seconds and are blocked by terrain. Type B (pink, labeled B) locks its aim, charges up for 0.65 seconds, charges for 0.55 seconds, and recovers for 0.9 seconds. Dodge after the warning or stomp from above. Vision is blocked by terrain; bees collide with walls, ceilings, and ramps. Ground impacts stun either flying variant for one second, shown by circling stars; wall or ceiling impacts stop a charge. Restart clears shots and restores defeated enemies.
 
 Both flying bugs pause during wind-up, with a pulsing glow, a filling ring, converging sparks, and a growing shake before releasing their attack. Their collision boxes stay fixed during the animation.
+
+## Health
+
+The player starts with 3 health, and all slimes and bees start with 2 health. Each landing damages one enemy and bounces the player; enemies disappear only at zero health. Enemy health bars stay visible above their bodies. Contact with enemies, shots, or spikes deals one player damage, followed by one second of flashing invulnerability. Shots disappear on contact. The health counter shows remaining player health. Zero health or falling out of the world restarts the level; restarting or switching levels restores everyone to full health.

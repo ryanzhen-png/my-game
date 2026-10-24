@@ -41,14 +41,26 @@ nextButton.onclick = () => {
 editor.value = window.exampleMap;
 
 function restart() {
-  player = { ...level.spawn, w: 28, h: 34, vx: 0, vy: 0, grounded: false };
+  player = { ...level.spawn, w: 28, h: 34, vx: 0, vy: 0, grounded: false, health: 3, maxHealth: 3, invulnerable: 0 };
   enemies = level.enemies.map(spawn => Enemies.create(spawn));
   projectiles = [];
   won = false;
   facing = 1;
   nextButton.disabled = true;
   jumpRequested = false;
-  statusText.textContent = "Reach the flag. Stomp enemies from above! A bees shoot; B bees charge after a warning. Avoid spikes and shots.";
+  statusText.textContent = "Reach the flag. You have 3 health; enemies take 2 stomps. A bees shoot; B bees charge. Avoid spikes and shots.";
+}
+
+function damagePlayer() {
+  if (player.invulnerable > 0) return;
+  player.health -= 1;
+  if (player.health <= 0) {
+    restart();
+    statusText.textContent = "Out of health! Back to the start with full health.";
+  } else {
+    player.invulnerable = 1;
+    statusText.textContent = `Ouch! ${player.health} of ${player.maxHealth} health remaining.`;
+  }
 }
 
 function buildMap() {
@@ -123,6 +135,7 @@ function frame(time) {
   while (remaining > 0) {
     const dt = Math.min(remaining, 1 / 120);
     if (!won) {
+      player.invulnerable = Math.max(0, player.invulnerable - dt);
       const right = keys.has("ArrowRight") || keys.has("KeyD");
       const left = keys.has("ArrowLeft") || keys.has("KeyA");
       const direction = Number(right) - Number(left);
@@ -132,23 +145,27 @@ function frame(time) {
       Physics.step(player, level.blocks, direction, jumpRequested, dt, level.width, level.slopes);
       projectiles = Enemies.updateProjectiles(projectiles, level, dt);
       Enemies.update(enemies, level, dt, player, projectiles);
-      let enemyHit = false;
-      const defeated = new Set();
-      enemies.forEach((enemy, index) => {
-        if (Enemies.stomp(player, previousPlayer, enemy, previousEnemies[index])) defeated.add(enemy);
-        else if (Physics.overlaps(player, enemy)) enemyHit = true;
-      });
-      if (defeated.size) {
-        player.y = Math.min(...[...defeated].map(enemy => enemy.y)) - player.h;
+      // A single landing damages one target, even if enemies overlap.
+      const stompedIndex = enemies.findIndex((enemy, index) =>
+        Enemies.stomp(player, previousPlayer, enemy, previousEnemies[index]));
+      if (stompedIndex >= 0) {
+        const target = enemies[stompedIndex];
+        target.health -= 1;
+        player.y = target.y - player.h;
         player.vy = -Physics.jumpSpeed * 0.75;
         player.grounded = false;
-        enemies = enemies.filter(enemy => !defeated.has(enemy));
+        if (target.health <= 0) enemies.splice(stompedIndex, 1);
       }
+      const enemyHit = stompedIndex < 0 && enemies.some(enemy => Physics.overlaps(player, enemy));
+      const shotHit = projectiles.some(shot => Physics.overlaps(player, shot));
+      // Shots disappear on contact, including during the grace period.
+      projectiles = projectiles.filter(shot => !Physics.overlaps(player, shot));
       jumpRequested = false;
-      if (player.y > level.height || level.spikes.some(spike => Physics.overlaps(player, spike)) ||
-          enemyHit || projectiles.some(shot => Physics.overlaps(player, shot))) {
+      if (player.y > level.height) {
         restart();
-        statusText.textContent = "Back to the start! Stomp enemies from above; dodge shots, charges, and spikes.";
+        statusText.textContent = "Fell out of the world! Back to the start with full health.";
+      } else if (enemyHit || shotHit || level.spikes.some(spike => Physics.overlaps(player, spike))) {
+        damagePlayer();
       }
       if (Physics.overlaps(player, level.goal)) {
         won = true;
@@ -248,6 +265,11 @@ function frame(time) {
     }
     ctx.drawImage(art[frameName], -enemy.w / 2, 0, enemy.w, enemy.h);
     ctx.restore();
+    ctx.save();
+    ctx.fillStyle = "#382a35"; ctx.fillRect(enemy.x, enemy.y - 6, enemy.w, 4);
+    ctx.fillStyle = "#65d46e";
+    ctx.fillRect(enemy.x, enemy.y - 6, enemy.w * enemy.health / enemy.maxHealth, 4);
+    ctx.restore();
     if (document.querySelector("#debug").checked) {
       ctx.strokeStyle = "#df2476";
       ctx.strokeRect(enemy.x, enemy.y, enemy.w, enemy.h);
@@ -261,6 +283,7 @@ function frame(time) {
   const pose = won ? "cheer1" : !player.grounded ? (player.vy < 0 ? "jump" : "fall")
     : player.vx ? (Math.floor(animationTime * 9) % 2 ? "walk1" : "walk2") : "idle";
   ctx.save();
+  if (player.invulnerable > 0) ctx.globalAlpha = Math.floor(animationTime * 12) % 2 ? 0.35 : 1;
   ctx.translate(player.x + player.w / 2, player.y + player.h);
   ctx.scale(facing, 1);
   const image = art[pose];
@@ -273,6 +296,7 @@ function frame(time) {
     ctx.strokeRect(player.x, player.y, player.w, player.h);
   }
   ctx.restore();
+  document.querySelector("#health").textContent = `Health: ${player.health} / ${player.maxHealth}`;
   document.querySelector("#camera-info").textContent =
     `World: ${level.width}px | Camera: ${Math.round(cameraX)}px | Player world X: ${Math.round(player.x)}px`;
   requestAnimationFrame(frame);

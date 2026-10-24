@@ -4,10 +4,10 @@ window.Enemies = {
     if (spawn.kind === "flying") {
       return { ...spawn, w: 36, h: 30, direction: -1, startX: spawn.x,
         startY: spawn.y, age: 0, speed: 80, variant: spawn.variant || "A",
-        visionRadius: 200, cooldown: 0.8, state: "patrol", timer: 0, vx: 0, vy: 0 };
+        health: 2, maxHealth: 2, visionRadius: 200, cooldown: 0.8, state: "patrol", timer: 0, vx: 0, vy: 0 };
     }
     return { kind: "ground", ...spawn, w: 28, h: 30, vx: 0, vy: 0, grounded: false,
-      direction: -1, startX: spawn.x, speed: 65 };
+      direction: -1, startX: spawn.x, speed: 65, health: 2, maxHealth: 2 };
   },
 
   stomp(player, previousPlayer, enemy, previousEnemy) {
