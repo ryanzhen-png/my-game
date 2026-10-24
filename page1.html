@@ -26,11 +26,11 @@
     </div>
     <p id="status" role="status">Loading artwork…</p>
     <label><input id="background-motion" type="checkbox" checked> Animate background</label>
-    <label><input id="debug" type="checkbox" checked> Show collision boxes</label>
+    <label><input id="debug" type="checkbox" checked> Show collision boxes and bug vision</label>
     <p id="camera-info"></p>
     <section>
       <h2>1. Edit the map</h2>
-      <p>Each character becomes one 40 × 40 pixel cell. <code>#</code> = block, <code>P</code> = player, <code>^</code> = spikes, <code>F</code> = finish, <code>/</code> = uphill ramp, <code>\</code> = downhill ramp, <code>E</code> = walking slime, <code>B</code> = flying bee, <code>.</code> = empty.</p>
+      <p>Each character becomes one 40 × 40 pixel cell. <code>#</code> = block, <code>P</code> = player, <code>^</code> = spikes, <code>F</code> = finish, <code>/</code> = uphill ramp, <code>\</code> = downhill ramp, <code>E</code> = walking slime, <code>B</code> = type A shooting bee, <code>C</code> = type B charging bee, <code>.</code> = empty.</p>
       <p>Change a row, then build the level. Use 12 rows of equal length (20?200 characters). Wider maps scroll as you move. The decoder checks the data before creating the objects.</p>
       <label for="map">Level file contents (JSON)</label>
       <textarea id="map" spellcheck="false" rows="17"></textarea>
@@ -54,7 +54,7 @@
       <p>Character art: <a href="https://kenney.nl/assets/platformer-characters">Platformer Characters by Kenney</a>, CC0. Images are included locally, so gameplay needs no internet connection.</p>
       <h2>4. Ramps and a moving enemy</h2>
       <p>Walk across the small hill near the start. A ramp calculates a surface height beneath your feet instead of using a flat rectangle. Ramps are one-way: you can jump through their underside.</p>
-      <p>The slime patrols near its spawn, turns at walls and ledges, and sends you back on contact. Jump over it; this demo has no combat. Try moving <code>E</code> or <code>B</code> in the map. The bee flies back and forth with a gentle bob, ignoring gravity and terrain. All enemy contact resets the level.</p>
+      <p>Land on enemies from above to defeat them and bounce. Side or underside contact, spikes, and projectiles reset the level. Bees detect the player inside their visible 200-pixel vision circles. Type A (<code>B</code>, gold) fires aimed shots; type B (<code>C</code>, pink) flashes before charging toward your last position, then pauses to recover. Try both in the map editor.</p>
       <p>Slime walking, bee wingbeats, and flag flutter each alternate between two PNG frames. The artwork comes from <a href="https://kenney.nl/assets/new-platformer-pack">Kenney?s New Platformer Pack</a> (CC0), included locally with its license. Animation changes the image, while the collision rectangles stay fixed.</p>
     </section>
   </main>

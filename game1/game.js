@@ -9,6 +9,7 @@ const art = {};
 let level;
 let player;
 let enemies = [];
+let projectiles = [];
 let won = false;
 let jumpRequested = false;
 let previousTime;
@@ -42,11 +43,12 @@ editor.value = window.exampleMap;
 function restart() {
   player = { ...level.spawn, w: 28, h: 34, vx: 0, vy: 0, grounded: false };
   enemies = level.enemies.map(spawn => Enemies.create(spawn));
+  projectiles = [];
   won = false;
   facing = 1;
   nextButton.disabled = true;
   jumpRequested = false;
-  statusText.textContent = "Reach the yellow flag. Avoid spikes, walking slimes, and flying bees. Ramps can be walked up or down.";
+  statusText.textContent = "Reach the flag. Stomp enemies from above! A bees shoot; B bees charge after a warning. Avoid spikes and shots.";
 }
 
 function buildMap() {
@@ -125,13 +127,28 @@ function frame(time) {
       const left = keys.has("ArrowLeft") || keys.has("KeyA");
       const direction = Number(right) - Number(left);
       if (direction) facing = direction;
+      const previousPlayer = { x: player.x, y: player.y };
+      const previousEnemies = enemies.map(enemy => ({ y: enemy.y }));
       Physics.step(player, level.blocks, direction, jumpRequested, dt, level.width, level.slopes);
-      Enemies.update(enemies, level, dt);
+      projectiles = Enemies.updateProjectiles(projectiles, level, dt);
+      Enemies.update(enemies, level, dt, player, projectiles);
+      let enemyHit = false;
+      const defeated = new Set();
+      enemies.forEach((enemy, index) => {
+        if (Enemies.stomp(player, previousPlayer, enemy, previousEnemies[index])) defeated.add(enemy);
+        else if (Physics.overlaps(player, enemy)) enemyHit = true;
+      });
+      if (defeated.size) {
+        player.y = Math.min(...[...defeated].map(enemy => enemy.y)) - player.h;
+        player.vy = -Physics.jumpSpeed * 0.75;
+        player.grounded = false;
+        enemies = enemies.filter(enemy => !defeated.has(enemy));
+      }
       jumpRequested = false;
       if (player.y > level.height || level.spikes.some(spike => Physics.overlaps(player, spike)) ||
-          enemies.some(enemy => Physics.overlaps(player, enemy))) {
+          enemyHit || projectiles.some(shot => Physics.overlaps(player, shot))) {
         restart();
-        statusText.textContent = "Back to the start! Jump over spikes and enemies, or use a higher route.";
+        statusText.textContent = "Back to the start! Stomp enemies from above; dodge shots, charges, and spikes.";
       }
       if (Physics.overlaps(player, level.goal)) {
         won = true;
@@ -164,13 +181,71 @@ function frame(time) {
     }
     ctx.restore();
   }
+  for (const shot of projectiles) {
+    ctx.fillStyle = "#e58919";
+    ctx.beginPath(); ctx.arc(shot.x + shot.w / 2, shot.y + shot.h / 2, shot.w / 2, 0, Math.PI * 2); ctx.fill();
+  }
   for (const enemy of enemies) {
+    if (enemy.kind === "flying") {
+      const color = enemy.variant === "B" ? "#bf487e" : "#b37b12";
+      if (document.querySelector("#debug").checked) {
+        const outline = Enemies.visionOutline(enemy, level);
+        ctx.save();
+        ctx.beginPath();
+        outline.forEach((point, i) => i === 0 ? ctx.moveTo(point.x, point.y) : ctx.lineTo(point.x, point.y));
+        ctx.closePath();
+        ctx.fillStyle = enemy.seesPlayer ? color + "20" : color + "0a";
+        ctx.fill(); ctx.strokeStyle = color + "80"; ctx.lineWidth = 1; ctx.setLineDash([5, 6]); ctx.stroke();
+        ctx.restore();
+      }
+      ctx.fillStyle = color; ctx.font = "bold 12px sans-serif"; ctx.textAlign = "center";
+      ctx.fillText(enemy.variant + (enemy.state === "windup" ? " !" : ""), enemy.x + enemy.w / 2, enemy.y - 8);
+    }
+    if (enemy.state === "stunned") {
+      ctx.save(); ctx.fillStyle = "#ffd54a"; ctx.font = "bold 16px sans-serif";
+      ctx.textAlign = "center";
+      for (let i = 0; i < 3; i++) {
+        const angle = animationTime * 5 + i * Math.PI * 2 / 3;
+        ctx.fillText("*", enemy.x + enemy.w / 2 + Math.cos(angle) * 18,
+          enemy.y - 12 + Math.sin(angle) * 5);
+      }
+      ctx.restore();
+    }
+    const chargeProgress = enemy.state === "windup"
+      ? Math.max(0, Math.min(1, 1 - enemy.timer / enemy.windupDuration)) : 0;
+    if (enemy.state === "windup") {
+      const cx = enemy.x + enemy.w / 2, cy = enemy.y + enemy.h / 2;
+      const chargeColor = enemy.variant === "B" ? "#ff529c" : "#ffbd32";
+      const pulse = (Math.sin(chargeProgress * Math.PI * 8) + 1) / 2;
+      ctx.save();
+      ctx.strokeStyle = chargeColor; ctx.fillStyle = chargeColor;
+      ctx.globalAlpha = 0.15 + pulse * 0.2;
+      ctx.beginPath(); ctx.arc(cx, cy, 24 + pulse * 4, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(cx, cy, 25, -Math.PI / 2,
+        -Math.PI / 2 + chargeProgress * Math.PI * 2); ctx.stroke();
+      // Sparks converge on the bug as its attack builds.
+      for (let i = 0; i < 6; i++) {
+        const angle = i * Math.PI / 3 + chargeProgress * 2;
+        const radius = 38 - chargeProgress * 22;
+        ctx.beginPath(); ctx.arc(cx + Math.cos(angle) * radius,
+          cy + Math.sin(angle) * radius, 2, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.restore();
+    }
     const frameName = (enemy.kind === "flying" ? "bee" : "slime") +
       (Math.floor(animationTime * (enemy.kind === "flying" ? 12 : 6)) % 2 ? "B" : "A");
     // Flip the artwork with patrol direction; collision stays in world space.
     ctx.save();
     ctx.translate(enemy.x + enemy.w / 2, enemy.y);
     ctx.scale(enemy.direction < 0 ? 1 : -1, 1);
+    if (enemy.kind === "flying" && enemy.variant === "B") ctx.filter = "hue-rotate(280deg)";
+    if (enemy.state === "windup") {
+      ctx.translate(Math.sin(chargeProgress * 65) * chargeProgress * 2.5, 0);
+      ctx.scale(1 + chargeProgress * 0.12, 1 - chargeProgress * 0.1);
+      ctx.filter = (enemy.variant === "B" ? "hue-rotate(280deg) " : "") +
+        `brightness(${1.2 + chargeProgress * 0.8})`;
+    }
     ctx.drawImage(art[frameName], -enemy.w / 2, 0, enemy.w, enemy.h);
     ctx.restore();
     if (document.querySelector("#debug").checked) {

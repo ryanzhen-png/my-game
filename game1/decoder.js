@@ -13,10 +13,10 @@ window.decodeMap = function (text) {
   let goals = 0;
   data.rows.forEach((row, rowIndex) => {
     [...row].forEach((symbol, columnIndex) => {
-      if (![".", "#", "P", "^", "F", "/", "\\", "E", "B"].includes(symbol)) throw new Error("Unknown map character: " + symbol);
+      if (![".", "#", "P", "^", "F", "/", "\\", "E", "B", "C"].includes(symbol)) throw new Error("Unknown map character: " + symbol);
       const cell = { x: columnIndex * 40, y: rowIndex * 40, w: 40, h: 40 };
       if (symbol === "/" || symbol === "\\") level.slopes.push({ ...cell, rising: symbol === "/" });
-      if (symbol === "E" || symbol === "B") level.enemies.push({ x: cell.x + 6, y: cell.y + 10, kind: symbol === "B" ? "flying" : "ground" });
+      if (symbol === "E" || symbol === "B" || symbol === "C") level.enemies.push({ x: cell.x + 6, y: cell.y + 10, kind: symbol === "E" ? "ground" : "flying", variant: symbol === "C" ? "B" : "A" });
       if (symbol === "#") level.blocks.push(cell);
       if (symbol === "^") level.spikes.push(cell);
       if (symbol === "P") { level.spawn = { x: cell.x + 6, y: cell.y + 6 }; players++; }
