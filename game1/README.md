@@ -75,3 +75,9 @@ Stomps pop the player vertically upward while preserving horizontal speed and no
 Left and right immediately set movement to 240 pixels per second, on the ground and in the air. Releasing stops horizontal movement immediately, and reversing changes direction immediately. Stomps add vertical bounce without a sideways impulse. Damage still applies brief knockback. Tune speed in physics.js to change player movement speed; enemy patrol speeds stay independent.
 
 Surviving enemies recoil for 0.3 seconds after a stomp. Slimes are pushed sideways with a small hop; bees are pushed sideways and downward, interrupting their attack. Recoil collides with terrain, and a bee knocked into the ground is stunned for one second.
+
+## Double jump and sword
+
+Enable double jump allows one extra jump in the air. Release and press Jump again to use it; landing or stomping refreshes it. The toggle is read at jump time and stays selected through restarts and level changes. Physics.tryJump exposes this behavior for reuse.
+
+Use WASD to choose sword aim, combining two keys (such as W+D) for diagonals, then press Space or Attack to swing. Aim stays selected until changed. Arrow Left/Right move and Arrow Up jumps. Shift toggles the Heavy attack checkbox: normal swings last 0.16 seconds with a 0.26-second cooldown and deal one damage; heavy swings last 0.4 seconds with a 0.65-second cooldown and deal two damage after a 0.2-second wind-up. Each enemy is hit at most once per swing, with knockback if it survives. Attacks use the aim and heavy mode chosen at swing start and cannot hit through terrain. Taking damage interrupts a swing. The collision toggle also shows the sword attack area. combat.js contains reusable attack logic; assets/sword.svg is the original local weapon sprite. Meadow trail adds four enemies, and Sunset journey adds six.

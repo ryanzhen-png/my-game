@@ -12,6 +12,8 @@ let enemies = [];
 let projectiles = [];
 let won = false;
 let jumpRequested = false;
+let attackRequested = false;
+let attackAim = 0;
 let previousTime;
 let selectedLevel = 0;
 let facing = 1;
@@ -20,6 +22,8 @@ let animationTime = 0;
 const levelSelect = document.querySelector("#level-select");
 const nextButton = document.querySelector("#next-level");
 const motion = document.querySelector("#background-motion");
+const heavyAttack = document.querySelector("#heavy-attack");
+const doubleJump = document.querySelector("#double-jump");
 if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) motion.checked = false;
 window.demoLevels.forEach((entry, index) => {
   const option = document.createElement("option");
@@ -41,14 +45,15 @@ nextButton.onclick = () => {
 editor.value = window.exampleMap;
 
 function restart() {
-  player = { ...level.spawn, w: 28, h: 34, vx: 0, vy: 0, grounded: false, health: 3, maxHealth: 3, invulnerable: 0, knockbackTime: 0, knockbackVX: 0 };
+  player = { ...level.spawn, w: 28, h: 34, vx: 0, vy: 0, grounded: false, health: 3, maxHealth: 3, invulnerable: 0, knockbackTime: 0, knockbackVX: 0, airJumpUsed: false, attackTime: 0, attackCooldown: 0, attackFacing: 1, attackHits: new Set() };
   enemies = level.enemies.map(spawn => Enemies.create(spawn));
   projectiles = [];
   won = false;
   facing = 1;
   nextButton.disabled = true;
   jumpRequested = false;
-  statusText.textContent = "Reach the flag. You have 3 health; enemies take 2 stomps. A bees shoot; B bees charge. Avoid spikes and shots.";
+  attackRequested = false;
+  statusText.textContent = "Reach the flag. You have 3 health; enemies take 2 hits. WASD aims; Space swings; Shift toggles heavy attacks. A bees shoot; B bees charge. Avoid spikes and shots.";
 }
 
 function knockbackPlayer(source, stomp = false) {
@@ -58,10 +63,12 @@ function knockbackPlayer(source, stomp = false) {
     player.grounded = false;
     player.knockbackTime = 0;
     player.knockbackVX = 0;
+    player.airJumpUsed = false;
     return;
   }
   const offset = player.x + player.w / 2 - (source.x + source.w / 2);
   const away = Math.sign(offset) || -facing;
+  player.attackTime = 0;
   player.knockbackVX = away * 280;
   player.knockbackTime = 0.28;
   player.vx = player.knockbackVX;
@@ -72,8 +79,10 @@ function knockbackPlayer(source, stomp = false) {
 function stepPlayer(direction, jump, dt) {
   const recoiling = player.knockbackTime > 0;
   const velocity = recoiling ? player.knockbackVX : direction * Physics.speed;
+  if (player.grounded) player.airJumpUsed = false;
+  if (!recoiling && jump) Physics.tryJump(player, doubleJump.checked);
   const oldX = player.x;
-  Physics.step(player, level.blocks, Math.sign(velocity), !recoiling && jump,
+  Physics.step(player, level.blocks, Math.sign(velocity), false,
     dt, level.width, level.slopes, Math.abs(velocity));
   // Stop horizontal movement at walls, including during knockback.
   if (Math.abs(player.x - oldX - velocity * dt) > 0.0001) {
@@ -108,17 +117,27 @@ function buildMap() {
   }
 }
 
-const jumpKeys = ["Space", "ArrowUp", "KeyW"];
-const gameKeys = ["ArrowLeft", "ArrowRight", "KeyA", "KeyD", ...jumpKeys, "KeyR"];
+const jumpKeys = ["ArrowUp"];
+const aimKeys = { KeyD: 0, KeyS: Math.PI / 2, KeyA: Math.PI, KeyW: -Math.PI / 2 };
+function updateAttackAim() {
+  const x = Number(keys.has("KeyD")) - Number(keys.has("KeyA"));
+  const y = Number(keys.has("KeyS")) - Number(keys.has("KeyW"));
+  if (x || y) attackAim = Math.atan2(y, x);
+}
+const gameKeys = ["ArrowLeft", "ArrowRight", ...Object.keys(aimKeys), ...jumpKeys, "Space", "ShiftLeft", "ShiftRight", "KeyR"];
 canvas.addEventListener("keydown", event => {
   if (!gameKeys.includes(event.code)) return;
   event.preventDefault();
   if (jumpKeys.includes(event.code) && !event.repeat) jumpRequested = true;
+  if (event.code in aimKeys) attackAim = aimKeys[event.code];
+  if (event.code === "Space" && !event.repeat) attackRequested = true;
+  if (["ShiftLeft", "ShiftRight"].includes(event.code) && !event.repeat) heavyAttack.checked = !heavyAttack.checked;
   if (event.code === "KeyR" && level) restart();
   keys.add(event.code);
+  updateAttackAim();
 });
-window.addEventListener("keyup", event => keys.delete(event.code));
-function clearInput() { keys.clear(); jumpRequested = false; }
+window.addEventListener("keyup", event => { keys.delete(event.code); updateAttackAim(); });
+function clearInput() { keys.clear(); jumpRequested = false; attackRequested = false; }
 canvas.addEventListener("blur", clearInput);
 window.addEventListener("blur", clearInput);
 
@@ -130,14 +149,18 @@ document.querySelectorAll("[data-key]").forEach(button => {
     canvas.focus();
     button.setPointerCapture(event.pointerId);
     keys.add(key);
-    if (key === "Space") jumpRequested = true;
+    if (key in aimKeys) updateAttackAim();
+    if (key === "ArrowUp") jumpRequested = true;
+    if (key === "Space") attackRequested = true;
   });
   for (const name of ["pointerup", "pointercancel", "lostpointercapture"]) {
-    button.addEventListener(name, () => keys.delete(key));
+    button.addEventListener(name, () => { keys.delete(key); updateAttackAim(); });
   }
   button.addEventListener("click", event => {
     if (event.detail === 0) {
-      if (key === "Space") jumpRequested = true;
+      if (key === "ArrowUp") jumpRequested = true;
+      else if (key === "Space") attackRequested = true;
+      else if (key in aimKeys) attackAim = aimKeys[key];
       else {
         keys.add(key);
         setTimeout(() => keys.delete(key), 150);
@@ -169,8 +192,8 @@ function frame(time) {
     const dt = Math.min(remaining, 1 / 120);
     if (!won) {
       player.invulnerable = Math.max(0, player.invulnerable - dt);
-      const right = keys.has("ArrowRight") || keys.has("KeyD");
-      const left = keys.has("ArrowLeft") || keys.has("KeyA");
+      const right = keys.has("ArrowRight");
+      const left = keys.has("ArrowLeft");
       const direction = Number(right) - Number(left);
       if (direction) facing = direction;
       const previousPlayer = { x: player.x, y: player.y };
@@ -189,6 +212,10 @@ function frame(time) {
         if (target.health <= 0) enemies.splice(stompedIndex, 1);
         else Enemies.knockback(target, player);
       }
+      updateAttackAim();
+      if (attackRequested) Combat.start(player, attackAim, heavyAttack.checked);
+      attackRequested = false;
+      enemies = Combat.update(player, enemies, level, dt);
       const enemyHit = stompedIndex < 0 && enemies.find(enemy => Physics.overlaps(player, enemy));
       const shotHit = projectiles.find(shot => Physics.overlaps(player, shot));
       // Shots disappear on contact, including during the grace period.
@@ -325,6 +352,21 @@ function frame(time) {
   const displayWidth = displayHeight * image.naturalWidth / image.naturalHeight;
   ctx.drawImage(image, -displayWidth / 2, -displayHeight, displayWidth, displayHeight);
   ctx.restore();
+  if (player.attackTime > 0) {
+    const progress = 1 - player.attackTime / player.attackDuration;
+    ctx.save();
+    ctx.translate(player.x + player.w / 2, player.y + player.h / 2);
+    ctx.rotate(player.attackAngle);
+    ctx.strokeStyle = player.attackHeavy ? "#ffd066bb" : "#e6f7ff99"; ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.arc(0, 0, 48, -1.05, -1.05 + progress * 2.1); ctx.stroke();
+    ctx.rotate(-1.05 + progress * 2.1);
+    ctx.drawImage(art.sword, 4, -8, 56, 17.5);
+    ctx.restore();
+    if (document.querySelector("#debug").checked) {
+      const box = Combat.hitbox(player);
+      ctx.strokeStyle = "#72b5ee"; ctx.strokeRect(box.x, box.y, box.w, box.h);
+    }
+  }
   if (document.querySelector("#debug").checked) {
     ctx.strokeStyle = "#df2476";
     ctx.strokeRect(player.x, player.y, player.w, player.h);
@@ -337,7 +379,7 @@ function frame(time) {
 }
 
 const imageFiles = {
-  ramp: "ramp.svg", block: "block.svg", spikes: "spikes.svg",
+  sword: "sword.svg", ramp: "ramp.svg", block: "block.svg", spikes: "spikes.svg",
   slimeA: "kenney-platformer/slime_normal_walk_a.png",
   slimeB: "kenney-platformer/slime_normal_walk_b.png",
   beeA: "kenney-platformer/bee_a.png", beeB: "kenney-platformer/bee_b.png",

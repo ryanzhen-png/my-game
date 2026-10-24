@@ -4,6 +4,18 @@ window.Physics = {
   jumpSpeed: 560,
 
 
+  tryJump(body, doubleJumpEnabled) {
+    if (body.grounded) {
+      body.airJumpUsed = false;
+    } else {
+      if (!doubleJumpEnabled || body.airJumpUsed) return false;
+      body.airJumpUsed = true;
+    }
+    body.vy = -this.jumpSpeed;
+    body.grounded = false;
+    return true;
+  },
+
   overlaps(a, b) {
     return a.x < b.x + b.w && a.x + a.w > b.x &&
            a.y < b.y + b.h && a.y + a.h > b.y;

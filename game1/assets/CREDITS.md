@@ -25,3 +25,7 @@ Unmodified PNGs copied from the creator's downloaded archive:
 Stored in kenney-platformer/. The original archive is kenney-platformer.zip.
 The original local enemy.svg and flag.svg are retained as simple teaching examples;
 the running game now uses the downloaded PNG animation frames instead.
+
+## Sword
+
+sword.svg is original local artwork created for this demo: a transparent sword sprite with a steel blade, gold guard, and leather grip. No external asset requests are needed.
