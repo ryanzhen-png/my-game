@@ -16,3 +16,22 @@ code { color: #704092; }
 select { padding: 10px; border: 1px solid #a8bfce; border-radius: 7px; background: white; color: #1b3040; font: inherit; max-width: 100%; }
 button:disabled { opacity: .5; cursor: default; }
 #camera-info { font-family: monospace; color: #526777; }
+
+#game-screen:fullscreen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+  padding: 12px;
+  background: #101522;
+}
+#game-screen:fullscreen canvas {
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  max-height: calc(100dvh - 180px);
+  aspect-ratio: 5 / 3;
+  flex-shrink: 0;
+}
+#game-screen:fullscreen .controls { justify-content: center; flex-shrink: 0; }

@@ -125,7 +125,10 @@ function updateAttackAim() {
   if (x || y) attackAim = Math.atan2(y, x);
 }
 const gameKeys = ["ArrowLeft", "ArrowRight", ...Object.keys(aimKeys), ...jumpKeys, "Space", "ShiftLeft", "ShiftRight", "KeyR"];
-canvas.addEventListener("keydown", event => {
+window.addEventListener("keydown", event => {
+  // Leave typing, form navigation, and keyboard button activation alone.
+  if (event.target.closest("input, textarea, select, button, a, [contenteditable]")) return;
+  if (event.ctrlKey || event.metaKey || event.altKey) return;
   if (!gameKeys.includes(event.code)) return;
   event.preventDefault();
   if (jumpKeys.includes(event.code) && !event.repeat) jumpRequested = true;
@@ -141,12 +144,31 @@ function clearInput() { keys.clear(); jumpRequested = false; attackRequested = f
 canvas.addEventListener("blur", clearInput);
 window.addEventListener("blur", clearInput);
 
+const fullscreenButton = document.querySelector("#fullscreen");
+const gameScreen = document.querySelector("#game-screen");
+fullscreenButton.hidden = !document.fullscreenEnabled;
+fullscreenButton.addEventListener("click", async () => {
+  try {
+    if (document.fullscreenElement === gameScreen) await document.exitFullscreen();
+    else await gameScreen.requestFullscreen();
+    canvas.focus({ preventScroll: true });
+  } catch (error) {
+    statusText.textContent = "Fullscreen could not open. You can still play here without arrow-key scrolling.";
+  }
+});
+document.addEventListener("fullscreenchange", () => {
+  const active = document.fullscreenElement === gameScreen;
+  fullscreenButton.textContent = active ? "Exit fullscreen" : "Fullscreen";
+  fullscreenButton.setAttribute("aria-pressed", String(active));
+  clearInput();
+});
+
 // On-screen controls work with a mouse, touch, or keyboard activation.
 document.querySelectorAll("[data-key]").forEach(button => {
   const key = button.dataset.key;
   button.addEventListener("pointerdown", event => {
     event.preventDefault();
-    canvas.focus();
+    canvas.focus({ preventScroll: true });
     button.setPointerCapture(event.pointerId);
     keys.add(key);
     if (key in aimKeys) updateAttackAim();

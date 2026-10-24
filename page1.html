@@ -17,6 +17,7 @@
       <select id="level-select"></select>
       <button id="next-level" disabled>Next level ?</button>
     </div>
+    <div id="game-screen">
     <canvas id="game" width="800" height="480" tabindex="0" aria-label="Platform game. Focus here, then use Left and Right to move, Up to jump, WASD to aim, and Space to attack. Reach the yellow flag.">Your browser needs canvas support to run this demo.</canvas>
     <div class="controls" aria-label="Game controls">
       <button data-key="ArrowLeft" aria-label="Move left">← Left</button>
@@ -28,6 +29,8 @@
       <button data-key="KeyS" aria-label="Aim sword down">Aim down</button>
       <button data-key="KeyD" aria-label="Aim sword right">Aim right</button>
       <button id="restart">Restart</button>
+      <button id="fullscreen" aria-pressed="false" hidden>Fullscreen</button>
+    </div>
     </div>
     <p id="health" role="status" aria-label="Player health">Health: 3 / 3</p>
     <p id="status" role="status">Loading artwork…</p>
