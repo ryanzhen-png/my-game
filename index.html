@@ -1,0 +1,30 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome | My Game</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #101522; color: #f5f7ff; font-family: system-ui, sans-serif; }
+    main { width: min(100% - 40px, 420px); text-align: center; padding: 48px 0; }
+    h1 { margin: 0 0 12px; font-size: clamp(40px, 8vw, 64px); letter-spacing: -0.04em; }
+    p { margin: 0 0 36px; color: #aab4ce; font-size: 18px; }
+    nav { display: grid; gap: 14px; }
+    a { display: block; padding: 18px 24px; border: 1px solid #41506d; border-radius: 12px; background: #1e2940; color: #fff; text-decoration: none; font-size: 20px; font-weight: 600; transition: background 150ms ease; }
+    a:hover { background: #304364; }
+    a:focus-visible { outline: 3px solid #9fc4ff; outline-offset: 4px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Welcome</h1>
+    <p>Choose a page to get started.</p>
+    <nav aria-label="Start menu">
+      <a href="page1.html">Page 1</a>
+      <a href="page2.html">Page 2</a>
+      <a href="page3.html">Page 3</a>
+    </nav>
+  </main>
+</body>
+</html>
