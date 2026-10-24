@@ -41,7 +41,7 @@ nextButton.onclick = () => {
 editor.value = window.exampleMap;
 
 function restart() {
-  player = { ...level.spawn, w: 28, h: 34, vx: 0, vy: 0, grounded: false, health: 3, maxHealth: 3, invulnerable: 0 };
+  player = { ...level.spawn, w: 28, h: 34, vx: 0, vy: 0, grounded: false, health: 3, maxHealth: 3, invulnerable: 0, knockbackTime: 0, knockbackVX: 0 };
   enemies = level.enemies.map(spawn => Enemies.create(spawn));
   projectiles = [];
   won = false;
@@ -51,7 +51,51 @@ function restart() {
   statusText.textContent = "Reach the flag. You have 3 health; enemies take 2 stomps. A bees shoot; B bees charge. Avoid spikes and shots.";
 }
 
-function damagePlayer() {
+function knockbackPlayer(source, stomp = false) {
+  if (stomp) {
+    // A stomp adds vertical lift without changing horizontal momentum or steering.
+    player.vy = -Physics.jumpSpeed * 0.75;
+    player.grounded = false;
+    player.knockbackTime = 0;
+    player.knockbackVX = 0;
+    return;
+  }
+  const offset = player.x + player.w / 2 - (source.x + source.w / 2);
+  const away = Math.sign(offset) || -facing;
+  player.knockbackVX = away * 280;
+  player.knockbackTime = 0.28;
+  player.vx = player.knockbackVX;
+  player.vy = -Physics.jumpSpeed * 0.6;
+  player.grounded = false;
+}
+
+function stepPlayer(direction, jump, dt) {
+  const recoiling = player.knockbackTime > 0;
+  let velocity = player.vx;
+  if (recoiling) {
+    velocity = player.knockbackVX;
+  } else {
+    const target = direction * Physics.sprintSpeed;
+    const reversing = direction && velocity * direction < 0;
+    const rate = !direction
+      ? (player.grounded ? Physics.groundFriction : Physics.airFriction)
+      : reversing ? Physics.braking
+      : player.grounded ? Physics.acceleration : Physics.airAcceleration;
+    // Approach the requested speed gradually, without overshooting it.
+    velocity += Math.sign(target - velocity) * Math.min(Math.abs(target - velocity), rate * dt);
+  }
+  const oldX = player.x;
+  Physics.step(player, level.blocks, Math.sign(velocity), !recoiling && jump,
+    dt, level.width, level.slopes, Math.abs(velocity));
+  // Hitting a wall removes momentum, so holding into it cannot build sprint speed.
+  if (Math.abs(player.x - oldX - velocity * dt) > 0.0001) {
+    player.vx = 0;
+    if (recoiling) player.knockbackVX = 0;
+  }
+  player.knockbackTime = Math.max(0, player.knockbackTime - dt);
+}
+
+function damagePlayer(source) {
   if (player.invulnerable > 0) return;
   player.health -= 1;
   if (player.health <= 0) {
@@ -59,6 +103,7 @@ function damagePlayer() {
     statusText.textContent = "Out of health! Back to the start with full health.";
   } else {
     player.invulnerable = 1;
+    knockbackPlayer(source);
     statusText.textContent = `Ouch! ${player.health} of ${player.maxHealth} health remaining.`;
   }
 }
@@ -142,7 +187,7 @@ function frame(time) {
       if (direction) facing = direction;
       const previousPlayer = { x: player.x, y: player.y };
       const previousEnemies = enemies.map(enemy => ({ y: enemy.y }));
-      Physics.step(player, level.blocks, direction, jumpRequested, dt, level.width, level.slopes);
+      stepPlayer(direction, jumpRequested, dt);
       projectiles = Enemies.updateProjectiles(projectiles, level, dt);
       Enemies.update(enemies, level, dt, player, projectiles);
       // A single landing damages one target, even if enemies overlap.
@@ -152,20 +197,20 @@ function frame(time) {
         const target = enemies[stompedIndex];
         target.health -= 1;
         player.y = target.y - player.h;
-        player.vy = -Physics.jumpSpeed * 0.75;
-        player.grounded = false;
+        knockbackPlayer(target, true);
         if (target.health <= 0) enemies.splice(stompedIndex, 1);
       }
-      const enemyHit = stompedIndex < 0 && enemies.some(enemy => Physics.overlaps(player, enemy));
-      const shotHit = projectiles.some(shot => Physics.overlaps(player, shot));
+      const enemyHit = stompedIndex < 0 && enemies.find(enemy => Physics.overlaps(player, enemy));
+      const shotHit = projectiles.find(shot => Physics.overlaps(player, shot));
       // Shots disappear on contact, including during the grace period.
       projectiles = projectiles.filter(shot => !Physics.overlaps(player, shot));
       jumpRequested = false;
       if (player.y > level.height) {
         restart();
         statusText.textContent = "Fell out of the world! Back to the start with full health.";
-      } else if (enemyHit || shotHit || level.spikes.some(spike => Physics.overlaps(player, spike))) {
-        damagePlayer();
+      } else {
+        const damageSource = enemyHit || shotHit || level.spikes.find(spike => Physics.overlaps(player, spike));
+        if (damageSource) damagePlayer(damageSource);
       }
       if (Physics.overlaps(player, level.goal)) {
         won = true;
