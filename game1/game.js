@@ -16,6 +16,52 @@ let attackRequested = false;
 let attackAim = 0;
 let previousTime;
 let selectedLevel = 0;
+let customMap = false;
+const completedLevels = new Set();
+const levelsMenu = document.querySelector("#levels-menu");
+const soundEffects = document.querySelector("#sound-effects");
+let audioContext;
+function unlockAudio() {
+  if (!soundEffects.checked) return;
+  try {
+    const Audio = window.AudioContext || window.webkitAudioContext;
+    if (!Audio) return;
+    audioContext ??= new Audio();
+    if (audioContext.state === "suspended") audioContext.resume().catch(() => {});
+  } catch { /* Audio support is optional. */ }
+}
+window.addEventListener("keydown", unlockAudio);
+window.addEventListener("pointerdown", unlockAudio);
+function playJumpSound(airJump) {
+  if (!soundEffects.checked || audioContext?.state !== "running") return;
+  const oscillator = audioContext.createOscillator();
+  const gain = audioContext.createGain();
+  const now = audioContext.currentTime;
+  oscillator.frequency.setValueAtTime(airJump ? 520 : 320, now);
+  oscillator.frequency.exponentialRampToValueAtTime(airJump ? 900 : 640, now + 0.12);
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(0.08, now + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.16);
+  oscillator.connect(gain); gain.connect(audioContext.destination);
+  oscillator.start(now); oscillator.stop(now + 0.17);
+  oscillator.onended = () => { oscillator.disconnect(); gain.disconnect(); };
+}
+function renderLevelMenu() {
+  const cards = document.querySelector("#level-cards");
+  cards.replaceChildren();
+  window.demoLevels.forEach((entry, index) => {
+    const button = document.createElement("button");
+    button.textContent = entry.name + (completedLevels.has(index) ? " - Completed" : " - Play");
+    button.setAttribute("aria-current", String(index === selectedLevel));
+    button.onclick = () => { selectLevel(index); levelsMenu.close(); canvas.focus(); };
+    cards.append(button);
+  });
+}
+document.querySelector("#open-levels").onclick = () => {
+  clearInput(); renderLevelMenu(); levelsMenu.showModal();
+};
+document.querySelector("#close-levels").onclick = () => levelsMenu.close();
+levelsMenu.addEventListener("close", () => { clearInput(); canvas.focus(); });
 let facing = 1;
 let backgroundTime = 0;
 let animationTime = 0;
@@ -32,6 +78,7 @@ window.demoLevels.forEach((entry, index) => {
   levelSelect.append(option);
 });
 function selectLevel(index) {
+  customMap = false;
   selectedLevel = index;
   levelSelect.value = index;
   editor.value = window.demoLevels[index].text;
@@ -80,7 +127,10 @@ function stepPlayer(direction, jump, dt) {
   const recoiling = player.knockbackTime > 0;
   const velocity = recoiling ? player.knockbackVX : direction * Physics.speed;
   if (player.grounded) player.airJumpUsed = false;
-  if (!recoiling && jump) Physics.tryJump(player, doubleJump.checked);
+  if (!recoiling && jump) {
+    const airJump = !player.grounded;
+    if (Physics.tryJump(player, doubleJump.checked)) playJumpSound(airJump);
+  }
   const oldX = player.x;
   Physics.step(player, level.blocks, Math.sign(velocity), false,
     dt, level.width, level.slopes, Math.abs(velocity));
@@ -112,6 +162,7 @@ function buildMap() {
     level = decoded;
     restart();
     message.textContent = `Decoded ${level.blocks.length} blocks, ${level.spikes.length} spikes, ${level.slopes.length} ramps, ${enemies.length} enemies, one player, and one flag. World width: ${level.width}px.`;
+    return true;
   } catch (error) {
     message.textContent = "Map error: " + error.message;
   }
@@ -199,8 +250,8 @@ document.querySelectorAll("[data-key]").forEach(button => {
   });
 });
 document.querySelector("#restart").onclick = () => { if (level) restart(); };
-document.querySelector("#build").onclick = buildMap;
-document.querySelector("#reset-map").onclick = () => { editor.value = window.demoLevels[selectedLevel].text; buildMap(); };
+document.querySelector("#build").onclick = () => { if (buildMap()) customMap = true; };
+document.querySelector("#reset-map").onclick = () => { customMap = false; editor.value = window.demoLevels[selectedLevel].text; buildMap(); };
 
 function drawObject(image, object) {
   ctx.drawImage(image, object.x, object.y, object.w, object.h);
@@ -220,7 +271,7 @@ function frame(time) {
   previousTime = time;
   while (remaining > 0) {
     const dt = Math.min(remaining, 1 / 120);
-    if (!won) {
+    if (!won && !levelsMenu.open) {
       player.invulnerable = Math.max(0, player.invulnerable - dt);
       const right = keys.has("ArrowRight");
       const left = keys.has("ArrowLeft");
@@ -260,6 +311,7 @@ function frame(time) {
       }
       if (Physics.overlaps(player, level.goal)) {
         won = true;
+        if (!customMap) completedLevels.add(selectedLevel);
         nextButton.disabled = selectedLevel === window.demoLevels.length - 1;
         statusText.textContent = nextButton.disabled
           ? "All three levels complete! Choose a level or edit a map to keep experimenting."

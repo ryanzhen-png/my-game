@@ -32,13 +32,25 @@ window.Physics = {
 
   step(player, blocks, direction, jump, dt, worldWidth = 800, slopes = [], speed = this.speed) {
     const previousFeet = player.y + player.h;
+    const previousX = player.x;
     const wasGrounded = player.grounded;
     player.vx = direction * speed;
-    if (jump && player.grounded) player.vy = -this.jumpSpeed;
+    if (jump) this.tryJump(player, false);
     player.vy += this.gravity * dt;
 
     // Resolve horizontal movement first, so walls stop sideways movement.
     player.x += player.vx * dt;
+    // Lift onto an uphill surface before resolving the adjacent plateau wall.
+    if (wasGrounded && player.vy >= 0) {
+      let support = previousFeet;
+      for (const slope of slopes) {
+        if (player.x + player.w <= slope.x || player.x >= slope.x + slope.w) continue;
+        const oldSurface = this.slopeHeight(slope, { x: previousX, w: player.w });
+        const surface = this.slopeHeight(slope, player);
+        if (Math.abs(previousFeet - oldSurface) <= 1 && surface < support) support = surface;
+      }
+      player.y = support - player.h;
+    }
     for (const block of blocks) {
       if (!this.overlaps(player, block)) continue;
       if (player.vx > 0) player.x = block.x - player.w;
@@ -64,7 +76,7 @@ window.Physics = {
     // Ramps are one-way surfaces: jumping upward through them is allowed.
     // Grounded bodies can follow a descending ramp by a small step each frame.
     if (falling) {
-      const snap = wasGrounded ? Math.abs(player.vx * dt) + 1 : 0;
+      const snap = wasGrounded ? Math.abs(player.vx * dt) * Math.max(1, ...slopes.map(slope => slope.h / slope.w)) + 1 : 0;
       // Bridge the final tiny drop from a ramp back onto a flat floor.
       if (wasGrounded) {
         for (const block of blocks) {
@@ -76,14 +88,18 @@ window.Physics = {
           }
         }
       }
+      let rampSupport = Infinity;
       for (const slope of slopes) {
         if (player.x + player.w <= slope.x || player.x >= slope.x + slope.w) continue;
         const surface = this.slopeHeight(slope, player);
         if (previousFeet <= surface + snap && player.y + player.h >= surface - snap) {
-          player.y = surface - player.h;
-          player.vy = 0;
-          player.grounded = true;
+          rampSupport = Math.min(rampSupport, surface);
         }
+      }
+      if (rampSupport < Infinity && (!player.grounded || rampSupport <= player.y + player.h)) {
+        player.y = rampSupport - player.h;
+        player.vy = 0;
+        player.grounded = true;
       }
     }
   }

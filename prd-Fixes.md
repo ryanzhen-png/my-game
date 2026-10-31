@@ -1,4 +1,4 @@
-[] Fix slope interaction physics
-[] Add more enemies
-[] Add jump Sound Effects
-[] Add levels menu
+[x] Fix slope interaction physics
+[x] Add more enemies
+[x] Add jump Sound Effects
+[x] Add levels menu
