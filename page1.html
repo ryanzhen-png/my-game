@@ -13,10 +13,17 @@
     <p>Map data → decoder → objects → physics → drawing</p>
     <p>Move: <strong>Left / Right arrows</strong> ? Jump: <strong>Up arrow</strong> ? Aim sword: <strong>W A S D (combine for diagonals)</strong> ? Attack: <strong>Space</strong> ? Toggle heavy: <strong>Shift</strong> ? Restart: <strong>R</strong></p>
     <div class="controls">
+      <button id="open-levels">Levels menu</button>
       <label for="level-select">Level:</label>
       <select id="level-select"></select>
       <button id="next-level" disabled>Next level ?</button>
     </div>
+    <dialog id="levels-menu" aria-labelledby="levels-title">
+      <h2 id="levels-title">Choose a level</h2>
+      <p>Choose any challenge. Completed levels are marked for this visit.</p>
+      <div id="level-cards"></div>
+      <button id="close-levels">Resume game</button>
+    </dialog>
     <div id="game-screen">
     <canvas id="game" width="800" height="480" tabindex="0" aria-label="Platform game. Focus here, then use Left and Right to move, Up to jump, WASD to aim, and Space to attack. Reach the yellow flag.">Your browser needs canvas support to run this demo.</canvas>
     <div class="controls" aria-label="Game controls">
@@ -35,6 +42,7 @@
     <p id="health" role="status" aria-label="Player health">Health: 3 / 3</p>
     <p id="status" role="status">Loading artwork…</p>
     <label><input id="heavy-attack" type="checkbox"> Heavy attack (Shift)</label>
+    <label><input id="sound-effects" type="checkbox" checked> Jump sounds</label>
     <label><input id="double-jump" type="checkbox" checked> Enable double jump</label>
     <label><input id="background-motion" type="checkbox" checked> Animate background</label>
     <label><input id="debug" type="checkbox" checked> Show collision boxes and bug vision</label>

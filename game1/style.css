@@ -35,3 +35,9 @@ button:disabled { opacity: .5; cursor: default; }
   flex-shrink: 0;
 }
 #game-screen:fullscreen .controls { justify-content: center; flex-shrink: 0; }
+
+dialog { width: min(92vw, 520px); border: 1px solid #a8bfce; border-radius: 14px; padding: 24px; color: #1b3040; }
+dialog::backdrop { background: #101522bb; }
+#level-cards { display: grid; gap: 12px; margin-bottom: 20px; }
+#level-cards button { text-align: left; }
+#level-cards button[aria-current="true"] { border: 2px solid #176ad1; }

@@ -15,8 +15,8 @@ function makeWideMap(name, columns, platforms, spikes, finish) {
   rows[8][columns - 24] = "C";
   // Spread additional encounters across the longer routes, using empty cells only.
   const extras = columns >= 80
-    ? [[14, 7, "B"], [23, 10, "E"], [32, 7, "C"], [40, 10, "E"], [49, 6, "B"], [61, 8, "E"]]
-    : [[15, 7, "B"], [24, 10, "E"], [31, 7, "C"], [34, 8, "E"]];
+    ? [[18, 6, "C"], [55, 10, "E"], [68, 6, "B"], [14, 7, "B"], [23, 10, "E"], [32, 7, "C"], [40, 10, "E"], [49, 6, "B"], [61, 8, "E"]]
+    : [[18, 6, "C"], [36, 6, "B"], [44, 10, "E"], [15, 7, "B"], [24, 10, "E"], [31, 7, "C"], [34, 8, "E"]];
   for (const [x, y, kind] of extras) if (rows[y][x] === ".") rows[y][x] = kind;
   rows[finish[1]][finish[0]] = "F";
   return { name, tileSize: 40, rows: rows.map(row => row.join("")) };
@@ -34,9 +34,9 @@ window.demoLevels = [
       "..........C......B..",
       "..............F.....",
       "............####....",
-      ".......###..........",
+      ".......###......B...",
       "...###..............",
-      ".P.../##\\..^^....E..",
+      ".P.../##\\E.^^....E..",
       "####################"
     ]
   },
