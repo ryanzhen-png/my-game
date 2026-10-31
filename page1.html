@@ -48,6 +48,10 @@
     <label><input id="debug" type="checkbox" checked> Show collision boxes and bug vision</label>
     <p id="camera-info"></p>
     <section>
+      <h2>Boss stage: The Hive Guardian</h2>
+      <p>Level 4 has a short approach and a sealed arena with six platforms. Attack the stationary boss with your sword during the projectile phase. At 24 health it shields itself and summons bugs: defeat them all or survive 30 seconds. Then dodge charged tracking beams and horizontal/vertical laser lanes for 14 seconds. Dashed gold lines are warnings; solid pink beams hurt and pass through platforms. The final phase combines reinforcements, projectiles, and core lasers. Defeat the boss to open the gate and unlock the flag. Restart resets the entire encounter.</p>
+    </section>
+    <section>
       <h2>1. Edit the map</h2>
       <p>Each character becomes one 40 × 40 pixel cell. <code>#</code> = block, <code>P</code> = player, <code>^</code> = spikes, <code>F</code> = finish, <code>/</code> = uphill ramp, <code>\</code> = downhill ramp, <code>E</code> = walking slime, <code>B</code> = type A shooting bee, <code>C</code> = type B charging bee, <code>.</code> = empty.</p>
       <p>Change a row, then build the level. Use 12 rows of equal length (20?200 characters). Wider maps scroll as you move. The decoder checks the data before creating the objects.</p>
@@ -59,7 +63,7 @@
     <section>
       <h2>2. Follow the files</h2>
       <ul>
-        <li><code>game1/map.js</code> — three levels saved as JSON text.</li>
+        <li><code>game1/map.js</code> — four levels saved as JSON text.</li>
         <li><code>game1/decoder.js</code> — parses the text and turns cells into positioned objects.</li>
         <li><code>game1/assets/</code> — SVG images, separate from the map.</li>
         <li><code>game1/enemies.js</code> ? patrol behavior, wall turns, and ledge checks.</li>
@@ -82,6 +86,7 @@
   <script src="game1/physics.js"></script>
   <script src="game1/scenery.js"></script>
   <script src="game1/enemies.js"></script>
+  <script src="game1/boss.js"></script>
   <script src="game1/combat.js"></script>
   <script src="game1/game.js"></script>
 </body>

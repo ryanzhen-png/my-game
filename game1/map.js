@@ -21,6 +21,16 @@ function makeWideMap(name, columns, platforms, spikes, finish) {
   rows[finish[1]][finish[0]] = "F";
   return { name, tileSize: 40, rows: rows.map(row => row.join("")) };
 }
+function makeBossMap() {
+  const rows = Array.from({length:12},()=>Array(30).fill("."));
+  rows[11].fill("#"); rows[10][1]="P"; rows[10][28]="F";
+  // Three pairs, stepped inward toward the stationary central boss.
+  for (const [x,y] of [[13,9],[23,9],[14,6],[22,6],[16,3],[20,3]]) {
+    rows[y][x]="#"; rows[y][x+1]="#";
+  }
+  for(let y=0;y<11;y++) rows[y][29]="#";
+  return {name:"4. The Hive Guardian",tileSize:40,bossArena:true,rows:rows.map(row=>row.join(""))};
+}
 window.demoLevels = [
   {
     name: "1. First steps",
@@ -45,6 +55,7 @@ window.demoLevels = [
     [10, 11, 19, 20, 29, 30, 38, 39, 46, 47], [56, 6]),
   makeWideMap("3. Sunset journey", 80,
     [[5, 9, 3], [12, 8, 3], [20, 9, 3], [28, 8, 3], [37, 9, 3], [45, 8, 3], [53, 9, 3], [61, 9, 3], [67, 8, 3], [73, 7, 5]],
-    [9, 10, 17, 18, 25, 26, 33, 34, 42, 43, 50, 51, 58, 59, 65, 66, 71], [76, 6])
+    [9, 10, 17, 18, 25, 26, 33, 34, 42, 43, 50, 51, 58, 59, 65, 66, 71], [76, 6]),
+  makeBossMap()
 ].map(data => ({ name: data.name, text: JSON.stringify(data, null, 2) }));
 window.exampleMap = window.demoLevels[0].text;

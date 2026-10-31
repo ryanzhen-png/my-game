@@ -87,3 +87,11 @@ Use WASD to choose sword aim, combining two keys (such as W+D) for diagonals, th
 The Levels menu pauses play and marks built-in levels completed during this visit. Edited maps do not earn completion badges. Every route has extra slime and bee encounters. Jump sounds are synthesized locally with Web Audio; Jump sounds mutes them. Ground and double jumps use different pitches; rejected jumps stay silent. Audio starts after keyboard or pointer interaction.
 
 Ramp movement lifts grounded bodies before plateau wall collisions and follows descending surfaces. Ramps remain one-way surfaces.
+
+## Level 4: The Hive Guardian
+
+Select level 4 or continue from Sunset journey. The 400-pixel approach leads to an 800-pixel arena with six platforms. Crossing x=440 closes the entrance and fixes the camera at x=400. The stationary boss is centered at (800,256). The flag is disabled until it dies, then the entrance reopens. Restart removes the gate and resets boss health, phases, minions, shots, and beams.
+
+The boss has 36 health and takes normal/heavy sword damage without knockback. Phase 1 fires aimed three-shot spreads until health reaches 24. Phase 2 shields the boss and spawns eight bees; it ends after 30 seconds or after all boss minions die. Phase 3 shields the boss for 14 seconds: a 1.5-second warning precedes a 4.5-second tracking laser with slow angular movement, alongside horizontal/vertical lanes locked to the player's position at warning time. Lasers penetrate platforms; dashed gold warnings are harmless, solid pink beams deal normal contact damage. Final phase removes the shield, fires projectiles and tracking core lasers, and reinforces every 12 seconds (maximum 12 living minions). Existing minions survive phase transitions. All simulation timers pause in the Levels menu. Completion badges require defeating the boss and reaching the flag.
+
+`boss.js` owns the encounter, laser collision, rendering, and fixed camera. `bossArena: true` in the 30-column map JSON enables it. Tune health, timings, laser speed, wave cap, and attack intervals there. Run `node game1/boss.test.cjs` for encounter checks.

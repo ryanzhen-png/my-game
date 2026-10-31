@@ -10,6 +10,7 @@ let level;
 let player;
 let enemies = [];
 let projectiles = [];
+let boss;
 let won = false;
 let jumpRequested = false;
 let attackRequested = false;
@@ -95,12 +96,14 @@ function restart() {
   player = { ...level.spawn, w: 28, h: 34, vx: 0, vy: 0, grounded: false, health: 3, maxHealth: 3, invulnerable: 0, knockbackTime: 0, knockbackVX: 0, airJumpUsed: false, attackTime: 0, attackCooldown: 0, attackFacing: 1, attackHits: new Set() };
   enemies = level.enemies.map(spawn => Enemies.create(spawn));
   projectiles = [];
+  boss = Boss.create(level);
   won = false;
   facing = 1;
   nextButton.disabled = true;
   jumpRequested = false;
   attackRequested = false;
   statusText.textContent = "Reach the flag. You have 3 health; enemies take 2 hits. WASD aims; Space swings; Shift toggles heavy attacks. A bees shoot; B bees charge. Avoid spikes and shots.";
+  if (boss) statusText.textContent = "Enter the Hive Guardian arena. Use six platforms to reach the boss; sword hits damage it when its shield is down.";
 }
 
 function knockbackPlayer(source, stomp = false) {
@@ -280,6 +283,7 @@ function frame(time) {
       const previousPlayer = { x: player.x, y: player.y };
       const previousEnemies = enemies.map(enemy => ({ y: enemy.y }));
       stepPlayer(direction, jumpRequested, dt);
+      Boss.update(boss, level, player, enemies, projectiles, dt);
       projectiles = Enemies.updateProjectiles(projectiles, level, dt);
       Enemies.update(enemies, level, dt, player, projectiles);
       // A single landing damages one target, even if enemies overlap.
@@ -296,7 +300,8 @@ function frame(time) {
       updateAttackAim();
       if (attackRequested) Combat.start(player, attackAim, heavyAttack.checked);
       attackRequested = false;
-      enemies = Combat.update(player, enemies, level, dt);
+      const targets = boss?.active && !boss.defeated ? [...enemies,boss] : enemies;
+      enemies = Combat.update(player, targets, level, dt).filter(enemy => enemy.kind !== "boss");
       const enemyHit = stompedIndex < 0 && enemies.find(enemy => Physics.overlaps(player, enemy));
       const shotHit = projectiles.find(shot => Physics.overlaps(player, shot));
       // Shots disappear on contact, including during the grace period.
@@ -306,21 +311,21 @@ function frame(time) {
         restart();
         statusText.textContent = "Fell out of the world! Back to the start with full health.";
       } else {
-        const damageSource = enemyHit || shotHit || level.spikes.find(spike => Physics.overlaps(player, spike));
+        const damageSource = enemyHit || shotHit || Boss.hazard(boss, player) || level.spikes.find(spike => Physics.overlaps(player, spike));
         if (damageSource) damagePlayer(damageSource);
       }
-      if (Physics.overlaps(player, level.goal)) {
+      if ((!boss || boss.defeated) && Physics.overlaps(player, level.goal)) {
         won = true;
         if (!customMap) completedLevels.add(selectedLevel);
         nextButton.disabled = selectedLevel === window.demoLevels.length - 1;
         statusText.textContent = nextButton.disabled
-          ? "All three levels complete! Choose a level or edit a map to keep experimenting."
+          ? "All four levels complete! Choose a level or edit a map to keep experimenting."
           : "Flag reached! Press Space or choose Next level to continue. Press R to replay.";
       }
     }
     remaining -= dt;
   }
-  const cameraX = Scenery.cameraX(player, level.width, canvas.width);
+  const cameraX = Boss.cameraX(boss) ?? Scenery.cameraX(player, level.width, canvas.width);
   Scenery.draw(ctx, canvas.width, canvas.height, cameraX, backgroundTime, selectedLevel === 2);
   ctx.save();
   ctx.translate(-cameraX, 0);
@@ -418,9 +423,13 @@ function frame(time) {
       ctx.strokeRect(enemy.x, enemy.y, enemy.w, enemy.h);
     }
   }
+  Boss.draw(boss, ctx, art, animationTime);
   for (const spike of level.spikes) drawObject(art.spikes, spike);
   // The goal's collision rectangle stays fixed as its flag flutters.
+  ctx.save();
+  if (boss && !boss.defeated) ctx.globalAlpha = 0.25;
   drawObject(art[Math.floor(animationTime * 6) % 2 ? "flagB" : "flagA"], level.goal);
+  ctx.restore();
 
   // Animation chooses an image; it does not change the collision rectangle.
   const pose = won ? "cheer1" : !player.grounded ? (player.vy < 0 ? "jump" : "fall")
@@ -454,6 +463,7 @@ function frame(time) {
     ctx.strokeRect(player.x, player.y, player.w, player.h);
   }
   ctx.restore();
+  Boss.drawHUD(boss, ctx);
   if (won) {
     ctx.save();
     ctx.fillStyle = "#101522dd";

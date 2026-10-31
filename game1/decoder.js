@@ -9,6 +9,11 @@ window.decodeMap = function (text) {
     throw new Error("Use tileSize 40 and 12 equal-length rows, each between 20 and 200 characters.");
   }
   const level = { width: data.rows[0].length * 40, height: data.rows.length * 40, blocks: [], slopes: [], enemies: [], spikes: [], spawn: null, goal: null };
+  if (data.bossArena !== undefined && typeof data.bossArena !== "boolean") {
+    throw new Error("bossArena must be true or false.");
+  }
+  if (data.bossArena && level.width !== 1200) throw new Error("The boss arena requires 30 columns.");
+  level.bossArena = data.bossArena === true;
   let players = 0;
   let goals = 0;
   data.rows.forEach((row, rowIndex) => {

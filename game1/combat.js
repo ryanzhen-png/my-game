@@ -44,11 +44,16 @@ window.Combat = {
     const edges = Enemies.visionEdges(level, x, y, 100);
     for (const enemy of enemies) {
       if (player.attackHits.has(enemy) || !this.hits(player, enemy)) continue;
+      if (enemy.kind === "boss" && !Boss.vulnerable(enemy)) continue;
       const dx = enemy.x + enemy.w / 2 - x, dy = enemy.y + enemy.h / 2 - y;
       const distance = Math.hypot(dx, dy);
       if (distance > 0 && Enemies.visionDistance(x, y, dx / distance, dy / distance,
           distance, edges) < distance) continue;
       player.attackHits.add(enemy);
+      if (enemy.kind === "boss") {
+        Boss.hit(enemy, player.attackDamage);
+        continue;
+      }
       enemy.health -= player.attackDamage;
       if (enemy.health > 0) Enemies.knockback(enemy, player, player.attackAngle, player.attackHeavy);
     }

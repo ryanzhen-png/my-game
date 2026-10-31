@@ -1,0 +1,97 @@
+const fs = require("node:fs");
+const vm = require("node:vm");
+const assert = require("node:assert/strict");
+const path = require("node:path");
+global.window = global;
+for (const file of ["physics", "map", "decoder", "enemies", "boss", "combat"]) {
+  vm.runInThisContext(fs.readFileSync(path.join(__dirname,file+".js"),"utf8"), {filename:file+".js"});
+}
+assert.equal(demoLevels.length,4);
+for (const entry of demoLevels) assert.doesNotThrow(()=>decodeMap(entry.text));
+const level=decodeMap(demoLevels[3].text);
+assert.equal(level.blocks.filter(b=>b.y<440 && b.x<1160).length,12,"six two-tile platforms");
+const player={x:100,y:390,w:28,h:34};
+const enemies=[],shots=[];
+function advance(seconds) {
+  while(seconds>1e-9) {
+    const dt=Math.min(seconds,1/120);
+    Boss.update(boss,level,player,enemies,shots,dt);
+    seconds-=dt;
+  }
+}
+let boss=Boss.create(level);
+assert.equal(Boss.cameraX(boss),null);
+Boss.update(boss,level,player,enemies,shots,1/120);
+assert.equal(boss.active,false);
+player.x=440;
+Boss.update(boss,level,player,enemies,shots,1/120);
+assert.equal(boss.phase,1);
+assert.equal(Boss.cameraX(boss),400);
+assert.equal(level.blocks.filter(b=>b.bossGate).length,1);
+const body={x:440,y:400,w:28,h:34,vy:0,grounded:true};
+for(let i=0;i<30;i++) Physics.step(body,level.blocks,-1,false,1/120,level.width,[]);
+assert(body.x>=420,"gate blocks exit");
+Boss.update(boss,level,player,enemies,shots,1);
+assert.equal(shots.length,3,"phase one projectiles");
+const position={x:boss.x,y:boss.y};
+Boss.hit(boss,100);
+assert.equal(boss.health,24,"damage cannot skip phases");
+Boss.update(boss,level,player,enemies,shots,1/120);
+assert.equal(boss.phase,2);
+assert.equal(enemies.length,8);
+assert.equal(shots.length,0);
+Boss.hit(boss,10);assert.equal(boss.health,24,"horde phase shield");
+advance(29);
+assert.equal(boss.phase,2);
+advance(1.01);
+assert.equal(boss.phase,3,"horde timeout");
+Boss.hit(boss,10);assert.equal(boss.health,24,"laser phase shield");
+Boss.update(boss,level,player,enemies,shots,0.6);
+assert(boss.lasers.some(l=>l.tracking));
+assert(boss.lasers.some(l=>!l.tracking && l.angle===0));
+assert(boss.lasers.some(l=>!l.tracking && l.angle===Math.PI/2));
+const beam={x:420,y:300,angle:0,width:14,length:760,warning:1.3,duration:1,age:0.5};
+assert.equal(Boss.laserHits(beam,{x:600,y:290,w:28,h:34}),false,"warning harmless");
+beam.age=1.4;
+assert(Boss.laserHits(beam,{x:600,y:290,w:28,h:34}),"horizontal beam collision");
+assert(!Boss.laserHits(beam,{x:600,y:350,w:28,h:34}));
+beam.x=600;beam.y=0;beam.angle=Math.PI/2;
+assert(Boss.laserHits(beam,{x:590,y:300,w:28,h:34}),"vertical beam collision");
+beam.angle=Math.PI/4;
+assert(Boss.laserHits(beam,{x:790,y:190,w:28,h:34}),"diagonal beam collision");
+beam.age=3;assert(!Boss.laserHits(beam,player),"expired beam harmless");
+const tracking=boss.lasers.find(l=>l.tracking);
+const oldAngle=tracking.angle;
+player.x=1100;player.y=80;
+Boss.update(boss,level,player,enemies,shots,0.1);
+assert(Math.abs(tracking.angle-oldAngle)<=0.065001,"tracking turn rate limited");
+advance(14);
+assert.equal(boss.phase,4);
+assert(Boss.vulnerable(boss));
+assert(enemies.length<=12,"reinforcement cap");
+Boss.update(boss,level,player,enemies,shots,1);
+assert(shots.length>0);assert(boss.lasers.length>0);
+assert.deepEqual({x:boss.x,y:boss.y},position,"boss stays stationary");
+// Use the real sword path, including terrain visibility and heavy damage.
+const swordPlayer={x:boss.x-24,y:boss.y+20,w:28,h:34,attackAngle:0,
+  attackTime:0.1,attackCooldown:0,attackHeavy:false,attackDamage:2,attackHits:new Set()};
+const health=boss.health;
+Combat.update(swordPlayer,[boss],level,1/120);
+assert.equal(boss.health,health-2);
+Combat.update(swordPlayer,[boss],level,1/120);
+assert.equal(boss.health,health-2,"one hit per swing");
+Boss.hit(boss,100);
+Boss.update(boss,level,player,enemies,shots,1/120);
+assert(boss.defeated);assert.equal(boss.lasers.length,0);
+assert.equal(enemies.length,0);assert.equal(shots.length,0);
+assert(!level.blocks.some(b=>b.bossGate));
+boss=Boss.create(level);
+assert.equal(boss.health,36);assert(!boss.active);assert.equal(Boss.cameraX(boss),null);
+player.x=440;
+Boss.update(boss,level,player,enemies,shots,1/120);
+Boss.hit(boss,12);Boss.update(boss,level,player,enemies,shots,1/120);
+enemies.length=0;
+Boss.update(boss,level,player,enemies,shots,1/120);
+assert.equal(boss.phase,3,"clearing horde advances early");
+Boss.create(level);assert(!level.blocks.some(b=>b.bossGate),"restart opens gate");
+console.log("Boss checks passed: maps, gate, camera, phase thresholds, horde timeout/clear, shield, lasers, sword damage, victory and restart.");
