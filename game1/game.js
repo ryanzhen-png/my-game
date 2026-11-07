@@ -71,6 +71,7 @@ const nextButton = document.querySelector("#next-level");
 const motion = document.querySelector("#background-motion");
 const heavyAttack = document.querySelector("#heavy-attack");
 const doubleJump = document.querySelector("#double-jump");
+const invincibility = document.querySelector("#invincibility");
 if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) motion.checked = false;
 window.demoLevels.forEach((entry, index) => {
   const option = document.createElement("option");
@@ -146,7 +147,7 @@ function stepPlayer(direction, jump, dt) {
 }
 
 function damagePlayer(source) {
-  if (player.invulnerable > 0) return;
+  if (invincibility.checked || player.invulnerable > 0) return;
   player.health -= 1;
   if (player.health <= 0) {
     restart();
@@ -281,10 +282,11 @@ function frame(time) {
       const direction = Number(right) - Number(left);
       if (direction) facing = direction;
       const previousPlayer = { x: player.x, y: player.y };
-      const previousEnemies = enemies.map(enemy => ({ y: enemy.y }));
       stepPlayer(direction, jumpRequested, dt);
       Boss.update(boss, level, player, enemies, projectiles, dt);
       projectiles = Enemies.updateProjectiles(projectiles, level, dt);
+      // Snapshot after boss spawns/removes minions so every enemy has a previous position.
+      const previousEnemies = enemies.map(enemy => ({ y: enemy.y }));
       Enemies.update(enemies, level, dt, player, projectiles);
       // A single landing damages one target, even if enemies overlap.
       const stompedIndex = enemies.findIndex((enemy, index) =>

@@ -5,8 +5,9 @@ window.Boss = {
     if (!level.bossArena) return null;
     return { kind: "boss", x: 752, y: 216, w: 96, h: 80,
       health: 36, maxHealth: 36, active: false, defeated: false,
-      phase: 0, time: 0, shotTimer: 0, waveTimer: 0, laserTimer: 0,
-      lasers: [], wave: 0, label: "Enter the arena" };
+      phase: 0, time: 0, shotTimer: 0, laserTimer: 0,
+      attackState: "rest", attackTimer: 1.5, attackIndex: 0, attackAngle: 0,
+      chargeDuration: 1.1, lasers: [], wave: 0, label: "Enter the arena" };
   },
   vulnerable(boss) { return boss.active && !boss.defeated && (boss.phase === 1 || boss.phase === 4); },
   hit(boss, damage) {
@@ -15,8 +16,9 @@ window.Boss = {
     boss.health = Math.max(boss.phase === 1 ? 24 : 0, boss.health - damage);
   },
   enterPhase(boss, phase, enemies, shots, player) {
-    boss.phase = phase; boss.time = 0; boss.shotTimer = 0.8;
-    boss.waveTimer = 8; boss.laserTimer = 0.5; boss.lasers = [];
+    boss.phase = phase; boss.time = 0;
+    boss.attackState = "rest"; boss.attackTimer = 1.5; boss.attackIndex = 0;
+    boss.laserTimer = 0.5; boss.lasers = [];
     shots.length = 0;
     if (phase === 2 || phase === 4) this.spawnWave(boss, enemies, player);
   },
@@ -30,19 +32,35 @@ window.Boss = {
       let [x,y] = point;
       if (Math.hypot(x-player.x, y-player.y) < 100) x = x < 800 ? 1120 : 448;
       const enemy = Enemies.create({ x, y, kind: "flying", variant: index % 3 === 0 ? "A" : "B" });
-      Object.assign(enemy, { bossMinion: true, visionRadius: 850,
+      Object.assign(enemy, { bossMinion: true, health: 1, maxHealth: 1, visionRadius: 850,
         state: "recover", timer: 1.2, cooldown: 0.8 });
       enemies.push(enemy);
     }
   },
-  aimedShots(boss, player, shots) {
-    const x = boss.x + boss.w/2, y = boss.y + boss.h/2;
-    const aim = Math.atan2(player.y+player.h/2-y, player.x+player.w/2-x);
-    for (const offset of [-0.28,0,0.28]) {
-      const angle = aim + offset;
-      shots.push({ x:x-6, y:y-6, w:12, h:12,
-        vx:Math.cos(angle)*190, vy:Math.sin(angle)*190, life:5 });
+  projectileAngles(boss) {
+    return boss.attackIndex % 2 === 0
+      ? [-0.6,-0.3,0,0.3,0.6].map(offset=>boss.attackAngle+offset)
+      : Array.from({length:10},(_,i)=>boss.attackAngle+i*Math.PI*2/10);
+  },
+  updateAttack(boss, player, shots, dt) {
+    boss.attackTimer -= dt;
+    if (boss.attackTimer > 0) return;
+    if (boss.attackState === "rest") {
+      boss.attackState = "charge";
+      boss.attackTimer = boss.chargeDuration;
+      // Lock aim at the start of the charge: the warning shows the actual shot lanes.
+      boss.attackAngle = Math.atan2(player.y+player.h/2-(boss.y+boss.h/2),
+        player.x+player.w/2-(boss.x+boss.w/2));
+      return;
     }
+    const x=boss.x+boss.w/2,y=boss.y+boss.h/2;
+    for (const angle of this.projectileAngles(boss)) {
+      shots.push({x:x-6,y:y-6,w:12,h:12,
+        vx:Math.cos(angle)*180,vy:Math.sin(angle)*180,life:5});
+    }
+    boss.attackIndex += 1;
+    boss.attackState = "rest";
+    boss.attackTimer = boss.phase === 1 ? 2 : 2.6;
   },
   trackingLaser(boss, player) {
     const x = boss.x+boss.w/2, y = boss.y+boss.h/2;
@@ -77,12 +95,7 @@ window.Boss = {
       this.enterPhase(boss,3,enemies,shots,player);
     } else if (boss.phase === 3 && boss.time >= 14) this.enterPhase(boss,4,enemies,shots,player);
     if (boss.phase === 1 || boss.phase === 4) {
-      boss.shotTimer -= dt;
-      if (boss.shotTimer <= 0) { this.aimedShots(boss,player,shots); boss.shotTimer = boss.phase===1 ? 1.25 : 1.8; }
-    }
-    if (boss.phase === 4) {
-      boss.waveTimer -= dt;
-      if (boss.waveTimer <= 0) { this.spawnWave(boss,enemies,player); boss.waveTimer = 12; }
+      this.updateAttack(boss,player,shots,dt);
     }
     if (boss.phase === 3 || boss.phase === 4) {
       boss.laserTimer -= dt;
@@ -105,7 +118,9 @@ window.Boss = {
       }
     }
     boss.lasers = boss.lasers.filter(laser => laser.age < laser.warning+laser.duration);
-    boss.label = boss.phase === 1 ? "Phase 1: projectile barrage - attack the boss!"
+    boss.label = boss.phase === 1 ? (boss.attackState === "charge"
+      ? "Phase 1: charging " + (boss.attackIndex%2===0 ? "aimed fan!" : "radial burst!")
+      : "Phase 1: boss recovering - attack now!")
       : boss.phase === 2 ? `Phase 2: horde - ${Math.ceil(30-boss.time)}s or defeat all bugs (shielded)`
       : boss.phase === 3 ? `Phase 3: lasers - survive ${Math.ceil(14-boss.time)}s (shielded)`
       : "Final phase: bugs, projectiles and core lasers - finish the boss!";
@@ -146,13 +161,40 @@ window.Boss = {
     }
     ctx.beginPath();ctx.rect(420,0,760,440);ctx.clip();
     if (!boss.defeated) {
-      const shielded=!this.vulnerable(boss);
-      ctx.fillStyle=shielded ? "#64ceff33" : "#ef508a33";
-      ctx.beginPath();ctx.arc(800,256,64,0,Math.PI*2);ctx.fill();
-      ctx.strokeStyle=shielded ? "#64ceff" : "#ef508a";ctx.lineWidth=3;ctx.stroke();
-      ctx.filter="hue-rotate(280deg)";
-      ctx.drawImage(art[Math.floor(time*10)%2 ? "beeA":"beeB"],boss.x,boss.y,boss.w,boss.h);
-      ctx.filter="none";
+      // A shield is visible only during the invulnerable horde and laser phases.
+      const shielded=boss.active && (boss.phase===2 || boss.phase===3);
+      if (shielded) {
+        ctx.fillStyle="#64ceff33";ctx.strokeStyle="#64ceff";ctx.lineWidth=3;
+        ctx.beginPath();ctx.arc(800,256,64,0,Math.PI*2);ctx.fill();ctx.stroke();
+      }
+      let charge=boss.attackState==="charge" ? 1-boss.attackTimer/boss.chargeDuration : 0;
+      for(const laser of boss.lasers) {
+        if(laser.tracking && laser.age<laser.warning) charge=Math.max(charge,laser.age/laser.warning);
+      }
+      ctx.save();
+      ctx.translate(800,256);
+      ctx.translate(Math.sin(time*65)*charge*3,0);
+      ctx.scale(1+charge*0.12,1-charge*0.08);
+      ctx.filter=`hue-rotate(280deg) brightness(${1+charge*0.9})`;
+      ctx.drawImage(art[Math.floor(time*10)%2 ? "beeA":"beeB"],-boss.w/2,-boss.h/2,boss.w,boss.h);
+      ctx.restore();
+      if (boss.attackState==="charge") {
+        ctx.strokeStyle="#ffcf5aaa";ctx.lineWidth=2;ctx.setLineDash([5,7]);
+        for(const angle of this.projectileAngles(boss)) {
+          ctx.beginPath();ctx.moveTo(800+Math.cos(angle)*50,256+Math.sin(angle)*50);
+          ctx.lineTo(800+Math.cos(angle)*145,256+Math.sin(angle)*145);ctx.stroke();
+        }
+        ctx.setLineDash([]);
+      }
+      if(charge>0) {
+        ctx.fillStyle="#ffe6a0";
+        for(let i=0;i<8;i++) {
+          const angle=i*Math.PI/4+time*2,radius=58-charge*38;
+          ctx.beginPath();ctx.arc(800+Math.cos(angle)*radius,256+Math.sin(angle)*radius,2+charge*2,0,Math.PI*2);ctx.fill();
+        }
+        ctx.fillStyle="#fff3bbcc";
+        ctx.beginPath();ctx.arc(800,256,4+charge*10,0,Math.PI*2);ctx.fill();
+      }
     }
     for(const laser of boss.lasers) {
       const warning=laser.age<laser.warning;
